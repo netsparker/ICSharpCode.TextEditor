@@ -9,158 +9,137 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Diagnostics;
 
 namespace ICSharpCode.TextEditor.Document
 {
 	public class HighlightingManager
 	{
-		ArrayList syntaxModeFileProviders = new ArrayList();
-		static HighlightingManager highlightingManager;
-		
 		// hash table from extension name to highlighting definition,
 		// OR from extension name to Pair SyntaxMode,ISyntaxModeFileProvider
-		Hashtable highlightingDefs = new Hashtable();
-		
-		Hashtable extensionsToName = new Hashtable();
-		
-		public Hashtable HighlightingDefinitions {
-			get {
-				return highlightingDefs;
-			}
-		}
-		
-		public static HighlightingManager Manager {
-			get {
-				return highlightingManager;
-			}
-		}
-		
+
+		private readonly Hashtable _extensionsToName = new Hashtable();
+		private readonly ArrayList _syntaxModeFileProviders = new ArrayList();
+
 		static HighlightingManager()
 		{
-			highlightingManager = new HighlightingManager();
-			highlightingManager.AddSyntaxModeFileProvider(new ResourceSyntaxModeProvider());
+			Manager = new HighlightingManager();
+			Manager.AddSyntaxModeFileProvider(new ResourceSyntaxModeProvider());
 		}
-		
+
 		public HighlightingManager()
 		{
 			CreateDefaultHighlightingStrategy();
 		}
-		
+
+		public Hashtable HighlightingDefinitions { get; } = new Hashtable();
+
+		public static HighlightingManager Manager { get; }
+
+		public DefaultHighlightingStrategy DefaultHighlighting
+			=> (DefaultHighlightingStrategy) HighlightingDefinitions["Default"];
+
 		public void AddSyntaxModeFileProvider(ISyntaxModeFileProvider syntaxModeFileProvider)
 		{
-			foreach (SyntaxMode syntaxMode in syntaxModeFileProvider.SyntaxModes) {
-				highlightingDefs[syntaxMode.Name] = new DictionaryEntry(syntaxMode, syntaxModeFileProvider);
-				foreach (string extension in syntaxMode.Extensions) {
-					extensionsToName[extension.ToUpperInvariant()] = syntaxMode.Name;
-				}
+			foreach (var syntaxMode in syntaxModeFileProvider.SyntaxModes)
+			{
+				HighlightingDefinitions[syntaxMode.Name] = new DictionaryEntry(syntaxMode, syntaxModeFileProvider);
+				foreach (var extension in syntaxMode.Extensions)
+					_extensionsToName[extension.ToUpperInvariant()] = syntaxMode.Name;
 			}
-			if (!syntaxModeFileProviders.Contains(syntaxModeFileProvider)) {
-				syntaxModeFileProviders.Add(syntaxModeFileProvider);
-			}
+			if (!_syntaxModeFileProviders.Contains(syntaxModeFileProvider))
+				_syntaxModeFileProviders.Add(syntaxModeFileProvider);
 		}
 
 		public void AddHighlightingStrategy(IHighlightingStrategy highlightingStrategy)
 		{
-			highlightingDefs[highlightingStrategy.Name] = highlightingStrategy;
-			foreach (string extension in highlightingStrategy.Extensions)
-			{
-				extensionsToName[extension.ToUpperInvariant()] = highlightingStrategy.Name;
-			}
+			HighlightingDefinitions[highlightingStrategy.Name] = highlightingStrategy;
+			foreach (var extension in highlightingStrategy.Extensions)
+				_extensionsToName[extension.ToUpperInvariant()] = highlightingStrategy.Name;
 		}
-		
+
 		public void ReloadSyntaxModes()
 		{
-			highlightingDefs.Clear();
-			extensionsToName.Clear();
+			HighlightingDefinitions.Clear();
+			_extensionsToName.Clear();
 			CreateDefaultHighlightingStrategy();
-			foreach (ISyntaxModeFileProvider provider in syntaxModeFileProviders) {
+			foreach (ISyntaxModeFileProvider provider in _syntaxModeFileProviders)
+			{
 				provider.UpdateSyntaxModeList();
 				AddSyntaxModeFileProvider(provider);
 			}
 			OnReloadSyntaxHighlighting(EventArgs.Empty);
 		}
-		
-		void CreateDefaultHighlightingStrategy()
+
+		private void CreateDefaultHighlightingStrategy()
 		{
-			DefaultHighlightingStrategy defaultHighlightingStrategy = new DefaultHighlightingStrategy();
+			var defaultHighlightingStrategy = new DefaultHighlightingStrategy();
 			defaultHighlightingStrategy.Extensions = new string[] {};
 			defaultHighlightingStrategy.Rules.Add(new HighlightRuleSet());
-			highlightingDefs["Default"] = defaultHighlightingStrategy;
+			HighlightingDefinitions["Default"] = defaultHighlightingStrategy;
 		}
-		
-		IHighlightingStrategy LoadDefinition(DictionaryEntry entry)
+
+		private IHighlightingStrategy LoadDefinition(DictionaryEntry entry)
 		{
-			SyntaxMode              syntaxMode             = (SyntaxMode)entry.Key;
-			ISyntaxModeFileProvider syntaxModeFileProvider = (ISyntaxModeFileProvider)entry.Value;
+			var syntaxMode = (SyntaxMode) entry.Key;
+			var syntaxModeFileProvider = (ISyntaxModeFileProvider) entry.Value;
 
 			DefaultHighlightingStrategy highlightingStrategy = null;
-			try {
+			try
+			{
 				var reader = syntaxModeFileProvider.GetSyntaxModeFile(syntaxMode);
 				if (reader == null)
 					throw new HighlightingDefinitionInvalidException("Could not get syntax mode file for " + syntaxMode.Name);
 				highlightingStrategy = HighlightingDefinitionParser.Parse(syntaxMode, reader);
-				if (highlightingStrategy.Name != syntaxMode.Name) {
-					throw new HighlightingDefinitionInvalidException("The name specified in the .xshd '" + highlightingStrategy.Name + "' must be equal the syntax mode name '" + syntaxMode.Name + "'");
-				}
-			} finally {
-				if (highlightingStrategy == null) {
+				if (highlightingStrategy.Name != syntaxMode.Name)
+					throw new HighlightingDefinitionInvalidException("The name specified in the .xshd '" + highlightingStrategy.Name +
+					                                                 "' must be equal the syntax mode name '" + syntaxMode.Name + "'");
+			}
+			finally
+			{
+				if (highlightingStrategy == null)
 					highlightingStrategy = DefaultHighlighting;
-				}
-				highlightingDefs[syntaxMode.Name] = highlightingStrategy;
+				HighlightingDefinitions[syntaxMode.Name] = highlightingStrategy;
 				highlightingStrategy.ResolveReferences();
 			}
 			return highlightingStrategy;
 		}
-		
-		public DefaultHighlightingStrategy DefaultHighlighting {
-			get {
-				return (DefaultHighlightingStrategy)highlightingDefs["Default"];
-			}
-		}
-		
+
 		internal KeyValuePair<SyntaxMode, ISyntaxModeFileProvider> FindHighlighterEntry(string name)
 		{
-			foreach (ISyntaxModeFileProvider provider in syntaxModeFileProviders) {
-				foreach (SyntaxMode mode in provider.SyntaxModes) {
-					if (mode.Name == name) {
-						return new KeyValuePair<SyntaxMode, ISyntaxModeFileProvider>(mode, provider);
-					}
-				}
-			}
+			foreach (ISyntaxModeFileProvider provider in _syntaxModeFileProviders)
+			foreach (var mode in provider.SyntaxModes)
+				if (mode.Name == name)
+					return new KeyValuePair<SyntaxMode, ISyntaxModeFileProvider>(mode, provider);
 			return new KeyValuePair<SyntaxMode, ISyntaxModeFileProvider>(null, null);
 		}
-		
+
 		public IHighlightingStrategy FindHighlighter(string name)
 		{
-			object def = highlightingDefs[name];
-			if (def is DictionaryEntry) {
-				return LoadDefinition((DictionaryEntry)def);
-			}
-			return def == null ? DefaultHighlighting : (IHighlightingStrategy)def;
+			var def = HighlightingDefinitions[name];
+			if (def is DictionaryEntry)
+				return LoadDefinition((DictionaryEntry) def);
+			return def == null ? DefaultHighlighting : (IHighlightingStrategy) def;
 		}
-		
+
 		public IHighlightingStrategy FindHighlighterForFile(string fileName)
 		{
-			string highlighterName = (string)extensionsToName[Path.GetExtension(fileName).ToUpperInvariant()];
-			if (highlighterName != null) {
-				object def = highlightingDefs[highlighterName];
-				if (def is DictionaryEntry) {
-					return LoadDefinition((DictionaryEntry)def);
-				}
-				return def == null ? DefaultHighlighting : (IHighlightingStrategy)def;
-			} else {
-				return DefaultHighlighting;
+			var highlighterName = (string) _extensionsToName[Path.GetExtension(fileName).ToUpperInvariant()];
+			if (highlighterName != null)
+			{
+				var def = HighlightingDefinitions[highlighterName];
+				if (def is DictionaryEntry)
+					return LoadDefinition((DictionaryEntry) def);
+				return def == null ? DefaultHighlighting : (IHighlightingStrategy) def;
 			}
+			return DefaultHighlighting;
 		}
-		
+
 		protected virtual void OnReloadSyntaxHighlighting(EventArgs e)
 		{
-			if (ReloadSyntaxHighlighting != null) {
+			if (ReloadSyntaxHighlighting != null)
 				ReloadSyntaxHighlighting(this, e);
-			}
 		}
-		
+
 		public event EventHandler ReloadSyntaxHighlighting;
 	}
 }

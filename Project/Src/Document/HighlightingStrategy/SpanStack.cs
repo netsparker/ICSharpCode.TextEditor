@@ -6,109 +6,101 @@
 // </file>
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace ICSharpCode.TextEditor.Document
 {
 	/// <summary>
-	/// A stack of Span instances. Works like Stack&lt;Span&gt;, but can be cloned quickly
-	/// because it is implemented as linked list.
+	///     A stack of Span instances. Works like Stack&lt;Span&gt;, but can be cloned quickly
+	///     because it is implemented as linked list.
 	/// </summary>
 	public sealed class SpanStack : ICloneable, IEnumerable<Span>
 	{
-		internal sealed class StackNode
-		{
-			public readonly StackNode Previous;
-			public readonly Span Data;
-			
-			public StackNode(StackNode previous, Span data)
-			{
-				this.Previous = previous;
-				this.Data = data;
-			}
-		}
-		
-		StackNode top = null;
-		
-		public Span Pop()
-		{
-			Span s = top.Data;
-			top = top.Previous;
-			return s;
-		}
-		
-		public Span Peek()
-		{
-			return top.Data;
-		}
-		
-		public void Push(Span s)
-		{
-			top = new StackNode(top, s);
-		}
-		
-		public bool IsEmpty {
-			get {
-				return top == null;
-			}
-		}
-		
-		public SpanStack Clone()
-		{
-			SpanStack n = new SpanStack();
-			n.top = this.top;
-			return n;
-		}
+		private StackNode _top;
+
+		public bool IsEmpty => _top == null;
+
 		object ICloneable.Clone()
 		{
-			return this.Clone();
+			return Clone();
 		}
-		
-		public Enumerator GetEnumerator()
-		{
-			return new Enumerator(new StackNode(top, null));
-		}
+
 		IEnumerator<Span> IEnumerable<Span>.GetEnumerator()
 		{
-			return this.GetEnumerator();
+			return GetEnumerator();
 		}
-		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+
+		IEnumerator IEnumerable.GetEnumerator()
 		{
-			return this.GetEnumerator();
+			return GetEnumerator();
 		}
-		
+
+		public Span Pop()
+		{
+			var s = _top.Data;
+			_top = _top.Previous;
+			return s;
+		}
+
+		public Span Peek()
+		{
+			return _top.Data;
+		}
+
+		public void Push(Span s)
+		{
+			_top = new StackNode(_top, s);
+		}
+
+		public SpanStack Clone()
+		{
+			var n = new SpanStack();
+			n._top = _top;
+			return n;
+		}
+
+		public Enumerator GetEnumerator()
+		{
+			return new Enumerator(new StackNode(_top, null));
+		}
+
+		internal sealed class StackNode
+		{
+			public readonly Span Data;
+			public readonly StackNode Previous;
+
+			public StackNode(StackNode previous, Span data)
+			{
+				Previous = previous;
+				Data = data;
+			}
+		}
+
 		public struct Enumerator : IEnumerator<Span>
 		{
-			StackNode c;
-			
+			private StackNode _c;
+
 			internal Enumerator(StackNode node)
 			{
-				c = node;
+				_c = node;
 			}
-			
-			public Span Current {
-				get {
-					return c.Data;
-				}
-			}
-			
-			object System.Collections.IEnumerator.Current {
-				get {
-					return c.Data;
-				}
-			}
-			
+
+			public Span Current => _c.Data;
+
+			object IEnumerator.Current => _c.Data;
+
 			public void Dispose()
 			{
-				c = null;
+				_c = null;
 			}
-			
+
 			public bool MoveNext()
 			{
-				c = c.Previous;
-				return c != null;
+				_c = _c.Previous;
+				return _c != null;
 			}
-			
+
 			public void Reset()
 			{
 				throw new NotSupportedException();

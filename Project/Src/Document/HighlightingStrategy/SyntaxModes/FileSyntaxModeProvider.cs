@@ -8,76 +8,73 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Windows.Forms;
 using System.Xml;
 
 namespace ICSharpCode.TextEditor.Document
 {
 	public class FileSyntaxModeProvider : ISyntaxModeFileProvider
 	{
-		string    directory;
-		List<SyntaxMode> syntaxModes = null;
-		
-		public ICollection<SyntaxMode> SyntaxModes {
-			get {
-				return syntaxModes;
-			}
-		}
-		
+		private readonly string _directory;
+		private List<SyntaxMode> _syntaxModes;
+
 		public FileSyntaxModeProvider(string directory)
 		{
-			this.directory = directory;
+			_directory = directory;
 			UpdateSyntaxModeList();
 		}
-		
+
+		public ICollection<SyntaxMode> SyntaxModes => _syntaxModes;
+
 		public void UpdateSyntaxModeList()
 		{
-			string syntaxModeFile = Path.Combine(directory, "SyntaxModes.xml");
-			if (File.Exists(syntaxModeFile)) {
+			var syntaxModeFile = Path.Combine(_directory, "SyntaxModes.xml");
+			if (File.Exists(syntaxModeFile))
+			{
 				Stream s = File.OpenRead(syntaxModeFile);
-				syntaxModes = SyntaxMode.GetSyntaxModes(s);
+				_syntaxModes = SyntaxMode.GetSyntaxModes(s);
 				s.Close();
-			} else {
-				syntaxModes = ScanDirectory(directory);
+			}
+			else
+			{
+				_syntaxModes = ScanDirectory(_directory);
 			}
 		}
-		
+
 		public XmlTextReader GetSyntaxModeFile(SyntaxMode syntaxMode)
 		{
-			string syntaxModeFile = Path.Combine(directory, syntaxMode.FileName);
-			if (!File.Exists(syntaxModeFile)) {
-				throw new HighlightingDefinitionInvalidException("Can't load highlighting definition " + syntaxModeFile + " (file not found)!");
-			}
+			var syntaxModeFile = Path.Combine(_directory, syntaxMode.FileName);
+			if (!File.Exists(syntaxModeFile))
+				throw new HighlightingDefinitionInvalidException("Can't load highlighting definition " + syntaxModeFile +
+				                                                 " (file not found)!");
 			return new XmlTextReader(File.OpenRead(syntaxModeFile));
 		}
-		
-		List<SyntaxMode> ScanDirectory(string directory)
+
+		private List<SyntaxMode> ScanDirectory(string directory)
 		{
-			string[] files = Directory.GetFiles(directory);
-			List<SyntaxMode> modes = new List<SyntaxMode>();
-			foreach (string file in files) {
-				if (Path.GetExtension(file).Equals(".XSHD", StringComparison.OrdinalIgnoreCase)) {
-					XmlTextReader reader = new XmlTextReader(file);
-					while (reader.Read()) {
-						if (reader.NodeType == XmlNodeType.Element) {
-							switch (reader.Name) {
+			var files = Directory.GetFiles(directory);
+			var modes = new List<SyntaxMode>();
+			foreach (var file in files)
+				if (Path.GetExtension(file).Equals(".XSHD", StringComparison.OrdinalIgnoreCase))
+				{
+					var reader = new XmlTextReader(file);
+					while (reader.Read())
+						if (reader.NodeType == XmlNodeType.Element)
+							switch (reader.Name)
+							{
 								case "SyntaxDefinition":
-									string name       = reader.GetAttribute("name");
-									string extensions = reader.GetAttribute("extensions");
+									var name = reader.GetAttribute("name");
+									var extensions = reader.GetAttribute("extensions");
 									modes.Add(new SyntaxMode(Path.GetFileName(file),
-									                         name,
-									                         extensions));
+										name,
+										extensions));
 									goto bailout;
 								default:
-									throw new HighlightingDefinitionInvalidException("Unknown root node in syntax highlighting file :" + reader.Name);
+									throw new HighlightingDefinitionInvalidException("Unknown root node in syntax highlighting file :" +
+									                                                 reader.Name);
 							}
-						}
-					}
-				bailout:
+					bailout:
 					reader.Close();
-					
 				}
-			}
 			return modes;
 		}
 	}

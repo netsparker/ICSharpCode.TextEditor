@@ -8,7 +8,7 @@
 using System;
 using ICSharpCode.TextEditor.Document;
 
-namespace ICSharpCode.TextEditor.Actions 
+namespace ICSharpCode.TextEditor.Actions
 {
 	public class ToggleBookmark : AbstractEditAction
 	{
@@ -17,62 +17,63 @@ namespace ICSharpCode.TextEditor.Actions
 			textArea.Document.BookmarkManager.ToggleMarkAt(textArea.Caret.Position);
 			textArea.Document.RequestUpdate(new TextAreaUpdate(TextAreaUpdateType.SingleLine, textArea.Caret.Line));
 			textArea.Document.CommitUpdate();
-			
 		}
 	}
-	
+
 	public class GotoPrevBookmark : AbstractEditAction
 	{
-		Predicate<Bookmark> predicate = null;
-		
+		private readonly Predicate<Bookmark> _predicate;
+
 		public GotoPrevBookmark(Predicate<Bookmark> predicate)
 		{
-			this.predicate = predicate;
+			_predicate = predicate;
 		}
-		
+
 		public override void Execute(TextArea textArea)
 		{
-			Bookmark mark = textArea.Document.BookmarkManager.GetPrevMark(textArea.Caret.Line, predicate);
-			if (mark != null) {
+			var mark = textArea.Document.BookmarkManager.GetPrevMark(textArea.Caret.Line, _predicate);
+			if (mark != null)
+			{
 				textArea.Caret.Position = mark.Location;
 				textArea.SelectionManager.ClearSelection();
 				textArea.SetDesiredColumn();
 			}
 		}
 	}
-	
+
 	public class GotoNextBookmark : AbstractEditAction
 	{
-		Predicate<Bookmark> predicate = null;
-		
+		private readonly Predicate<Bookmark> _predicate;
+
 		public GotoNextBookmark(Predicate<Bookmark> predicate)
 		{
-			this.predicate = predicate;
+			_predicate = predicate;
 		}
-		
+
 		public override void Execute(TextArea textArea)
 		{
-			Bookmark mark = textArea.Document.BookmarkManager.GetNextMark(textArea.Caret.Line, predicate);
-			if (mark != null) {
+			var mark = textArea.Document.BookmarkManager.GetNextMark(textArea.Caret.Line, _predicate);
+			if (mark != null)
+			{
 				textArea.Caret.Position = mark.Location;
 				textArea.SelectionManager.ClearSelection();
 				textArea.SetDesiredColumn();
 			}
 		}
 	}
-	
+
 	public class ClearAllBookmarks : AbstractEditAction
 	{
-		Predicate<Bookmark> predicate = null;
-		
+		private readonly Predicate<Bookmark> _predicate;
+
 		public ClearAllBookmarks(Predicate<Bookmark> predicate)
 		{
-			this.predicate = predicate;
+			_predicate = predicate;
 		}
-		
+
 		public override void Execute(TextArea textArea)
 		{
-			textArea.Document.BookmarkManager.RemoveMarks(predicate);
+			textArea.Document.BookmarkManager.RemoveMarks(_predicate);
 			textArea.Document.RequestUpdate(new TextAreaUpdate(TextAreaUpdateType.WholeTextArea));
 			textArea.Document.CommitUpdate();
 		}

@@ -10,15 +10,15 @@ using System;
 namespace ICSharpCode.TextEditor.Util
 {
 	/// <summary>
-	/// Central location for logging calls in the text editor.
+	///     Central location for logging calls in the text editor.
 	/// </summary>
-	static class LoggingService
+	internal static class LoggingService
 	{
 		public static void Debug(string text)
 		{
-			#if DEBUG
+#if DEBUG
 			Console.WriteLine(text);
-			#endif
+#endif
 		}
 	}
 }

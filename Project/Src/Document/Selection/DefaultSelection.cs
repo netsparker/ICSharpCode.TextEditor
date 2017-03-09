@@ -5,129 +5,107 @@
 //     <version>$Revision$</version>
 // </file>
 
-using System;
 using System.Diagnostics;
-using System.Drawing;
 
 namespace ICSharpCode.TextEditor.Document
 {
 	/// <summary>
-	/// Default implementation of the <see cref="ICSharpCode.TextEditor.Document.ISelection"/> interface.
+	///     Default implementation of the <see cref="ICSharpCode.TextEditor.Document.ISelection" /> interface.
 	/// </summary>
 	public class DefaultSelection : ISelection
 	{
-		IDocument document;
-		bool      isRectangularSelection;
-		TextLocation     startPosition;
-		TextLocation     endPosition;
-		
-		public TextLocation StartPosition {
-			get {
-				return startPosition;
-			}
-			set {
-				DefaultDocument.ValidatePosition(document, value);
-				startPosition = value;
-			}
-		}
-		
-		public TextLocation EndPosition {
-			get {
-				return endPosition;
-			}
-			set {
-				DefaultDocument.ValidatePosition(document, value);
-				endPosition = value;
-			}
-		}
-		
-		public int Offset {
-			get {
-				return document.PositionToOffset(startPosition);
-			}
-		}
-		
-		public int EndOffset {
-			get {
-				return document.PositionToOffset(endPosition);
-			}
-		}
-		
-		public int Length {
-			get {
-				return EndOffset - Offset;
-			}
-		}
-		
-		/// <value>
-		/// Returns true, if the selection is empty
-		/// </value>
-		public bool IsEmpty {
-			get {
-				return startPosition == endPosition;
-			}
-		}
-		
-		/// <value>
-		/// Returns true, if the selection is rectangular
-		/// </value>
-		// TODO : make this unused property used.
-		public bool IsRectangularSelection {
-			get {
-				return isRectangularSelection;
-			}
-			set {
-				isRectangularSelection = value;
-			}
-		}
-		
-		/// <value>
-		/// The text which is selected by this selection.
-		/// </value>
-		public string SelectedText {
-			get {
-				if (document != null) {
-					if (Length < 0) {
-						return null;
-					}
-					return document.GetText(Offset, Length);
-				}
-				return null;
-			}
-		}
-		
+		private readonly IDocument _document;
+		private TextLocation _endPosition;
+		private TextLocation _startPosition;
+
 		/// <summary>
-		/// Creates a new instance of <see cref="DefaultSelection"/>
+		///     Creates a new instance of <see cref="DefaultSelection" />
 		/// </summary>
 		public DefaultSelection(IDocument document, TextLocation startPosition, TextLocation endPosition)
 		{
 			DefaultDocument.ValidatePosition(document, startPosition);
 			DefaultDocument.ValidatePosition(document, endPosition);
 			Debug.Assert(startPosition <= endPosition);
-			this.document      = document;
-			this.startPosition = startPosition;
-			this.endPosition   = endPosition;
+			_document = document;
+			_startPosition = startPosition;
+			_endPosition = endPosition;
 		}
-		
-		/// <summary>
-		/// Converts a <see cref="DefaultSelection"/> instance to string (for debug purposes)
-		/// </summary>
-		public override string ToString()
+
+		public TextLocation StartPosition
 		{
-			return String.Format("[DefaultSelection : StartPosition={0}, EndPosition={1}]", startPosition, endPosition);
+			get { return _startPosition; }
+			set
+			{
+				DefaultDocument.ValidatePosition(_document, value);
+				_startPosition = value;
+			}
 		}
+
+		public TextLocation EndPosition
+		{
+			get { return _endPosition; }
+			set
+			{
+				DefaultDocument.ValidatePosition(_document, value);
+				_endPosition = value;
+			}
+		}
+
+		public int Offset => _document.PositionToOffset(_startPosition);
+
+		public int EndOffset => _document.PositionToOffset(_endPosition);
+
+		public int Length => EndOffset - Offset;
+
+		/// <value>
+		///     Returns true, if the selection is empty
+		/// </value>
+		public bool IsEmpty => _startPosition == _endPosition;
+
+		/// <value>
+		///     Returns true, if the selection is rectangular
+		/// </value>
+		// TODO : make this unused property used.
+		public bool IsRectangularSelection { get; set; }
+
+		/// <value>
+		///     The text which is selected by this selection.
+		/// </value>
+		public string SelectedText
+		{
+			get
+			{
+				if (_document != null)
+				{
+					if (Length < 0)
+						return null;
+					return _document.GetText(Offset, Length);
+				}
+				return null;
+			}
+		}
+
 		public bool ContainsPosition(TextLocation position)
 		{
-			if (this.IsEmpty)
+			if (IsEmpty)
 				return false;
-			return startPosition.Y < position.Y && position.Y  < endPosition.Y ||
-				startPosition.Y == position.Y && startPosition.X <= position.X && (startPosition.Y != endPosition.Y || position.X <= endPosition.X) ||
-				endPosition.Y == position.Y && startPosition.Y != endPosition.Y && position.X <= endPosition.X;
+			return _startPosition.Y < position.Y && position.Y < _endPosition.Y ||
+			       _startPosition.Y == position.Y && _startPosition.X <= position.X &&
+			       (_startPosition.Y != _endPosition.Y || position.X <= _endPosition.X) ||
+			       _endPosition.Y == position.Y && _startPosition.Y != _endPosition.Y && position.X <= _endPosition.X;
 		}
-		
+
 		public bool ContainsOffset(int offset)
 		{
 			return Offset <= offset && offset <= EndOffset;
+		}
+
+		/// <summary>
+		///     Converts a <see cref="DefaultSelection" /> instance to string (for debug purposes)
+		/// </summary>
+		public override string ToString()
+		{
+			return string.Format("[DefaultSelection : StartPosition={0}, EndPosition={1}]", _startPosition, _endPosition);
 		}
 	}
 }

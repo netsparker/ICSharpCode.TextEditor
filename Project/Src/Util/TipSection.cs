@@ -11,74 +11,59 @@ using System.Drawing;
 
 namespace ICSharpCode.TextEditor.Util
 {
-	abstract class TipSection
+	internal abstract class TipSection
 	{
-		SizeF    tipAllocatedSize;
-		Graphics tipGraphics;
-		SizeF    tipMaxSize;
-		SizeF    tipRequiredSize;
-		
+		private SizeF _tipRequiredSize;
+
 		protected TipSection(Graphics graphics)
 		{
-			tipGraphics = graphics;
+			Graphics = graphics;
 		}
-		
+
+		protected Graphics Graphics { get; }
+
+		protected SizeF AllocatedSize { get; private set; }
+
+		protected SizeF MaximumSize { get; private set; }
+
 		public abstract void Draw(PointF location);
-		
+
 		public SizeF GetRequiredSize()
 		{
-			return tipRequiredSize;
+			return _tipRequiredSize;
 		}
-		
+
 		public void SetAllocatedSize(SizeF allocatedSize)
 		{
-			Debug.Assert(allocatedSize.Width >= tipRequiredSize.Width &&
-			             allocatedSize.Height >= tipRequiredSize.Height);
-			
-			tipAllocatedSize = allocatedSize; OnAllocatedSizeChanged();
+			Debug.Assert(allocatedSize.Width >= _tipRequiredSize.Width &&
+			             allocatedSize.Height >= _tipRequiredSize.Height);
+
+			AllocatedSize = allocatedSize;
+			OnAllocatedSizeChanged();
 		}
-		
+
 		public void SetMaximumSize(SizeF maximumSize)
 		{
-			tipMaxSize = maximumSize; OnMaximumSizeChanged();
+			MaximumSize = maximumSize;
+			OnMaximumSizeChanged();
 		}
-		
+
 		protected virtual void OnAllocatedSizeChanged()
 		{
-			
 		}
-		
+
 		protected virtual void OnMaximumSizeChanged()
 		{
-			
 		}
-		
+
 		protected void SetRequiredSize(SizeF requiredSize)
 		{
-			requiredSize.Width  = Math.Max(0, requiredSize.Width);
+			requiredSize.Width = Math.Max(0, requiredSize.Width);
 			requiredSize.Height = Math.Max(0, requiredSize.Height);
-			requiredSize.Width  = Math.Min(tipMaxSize.Width, requiredSize.Width);
-			requiredSize.Height = Math.Min(tipMaxSize.Height, requiredSize.Height);
-			
-			tipRequiredSize = requiredSize;
-		}
-		
-		protected Graphics Graphics	{
-			get {
-				return tipGraphics;
-			}
-		}
-		
-		protected SizeF AllocatedSize {
-			get {
-				return tipAllocatedSize;
-			}
-		}
-		
-		protected SizeF MaximumSize {
-			get {
-				return tipMaxSize;
-			}
+			requiredSize.Width = Math.Min(MaximumSize.Width, requiredSize.Width);
+			requiredSize.Height = Math.Min(MaximumSize.Height, requiredSize.Height);
+
+			_tipRequiredSize = requiredSize;
 		}
 	}
 }

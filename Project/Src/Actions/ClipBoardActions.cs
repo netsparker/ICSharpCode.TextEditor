@@ -5,21 +5,18 @@
 //     <version>$Revision$</version>
 // </file>
 
-using System;
-
-namespace ICSharpCode.TextEditor.Actions 
+namespace ICSharpCode.TextEditor.Actions
 {
 	public class Cut : AbstractEditAction
 	{
 		public override void Execute(TextArea textArea)
 		{
-			if (textArea.Document.ReadOnly) {
+			if (textArea.Document.ReadOnly)
 				return;
-			}
 			textArea.ClipboardHandler.Cut(null, null);
 		}
 	}
-	
+
 	public class Copy : AbstractEditAction
 	{
 		public override void Execute(TextArea textArea)
@@ -33,9 +30,8 @@ namespace ICSharpCode.TextEditor.Actions
 	{
 		public override void Execute(TextArea textArea)
 		{
-			if (textArea.Document.ReadOnly) {
+			if (textArea.Document.ReadOnly)
 				return;
-			}
 			textArea.ClipboardHandler.Paste(null, null);
 		}
 	}

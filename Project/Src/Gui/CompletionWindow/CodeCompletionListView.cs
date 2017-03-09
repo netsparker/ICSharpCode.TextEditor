@@ -12,255 +12,254 @@ using System.Windows.Forms;
 namespace ICSharpCode.TextEditor.Gui.CompletionWindow
 {
 	/// <summary>
-	/// Description of CodeCompletionListView.
+	///     Description of CodeCompletionListView.
 	/// </summary>
-	public class CodeCompletionListView : System.Windows.Forms.UserControl
+	public class CodeCompletionListView : UserControl
 	{
-		ICompletionData[] completionData;
-		int               firstItem    = 0;
-		int               selectedItem = -1;
-		ImageList         imageList;
-		
-		public ImageList ImageList {
-			get {
-				return imageList;
-			}
-			set {
-				imageList = value;
-			}
-		}
-		
-		public int FirstItem {
-			get {
-				return firstItem;
-			}
-			set {
-				if (firstItem != value) {
-					firstItem = value;
-					OnFirstItemChanged(EventArgs.Empty);
-				}
-			}
-		}
-		
-		public ICompletionData SelectedCompletionData {
-			get {
-				if (selectedItem < 0) {
-					return null;
-				}
-				return completionData[selectedItem];
-			}
-		}
-		
-		public int ItemHeight {
-			get {
-				return Math.Max(imageList.ImageSize.Height, (int)(Font.Height * 1.25));
-			}
-		}
-		
-		public int MaxVisibleItem {
-			get {
-				return Height / ItemHeight;
-			}
-		}
-		
+		private readonly ICompletionData[] _completionData;
+		private int _firstItem;
+		private int _selectedItem = -1;
+
 		public CodeCompletionListView(ICompletionData[] completionData)
 		{
 			Array.Sort(completionData, DefaultCompletionData.Compare);
-			this.completionData = completionData;
-			
+			_completionData = completionData;
+
 //			this.KeyDown += new System.Windows.Forms.KeyEventHandler(OnKey);
 //			SetStyle(ControlStyles.Selectable, false);
 //			SetStyle(ControlStyles.UserPaint, true);
 //			SetStyle(ControlStyles.DoubleBuffer, false);
 		}
-		
+
+		public ImageList ImageList { get; set; }
+
+		public int FirstItem
+		{
+			get { return _firstItem; }
+			set
+			{
+				if (_firstItem != value)
+				{
+					_firstItem = value;
+					OnFirstItemChanged(EventArgs.Empty);
+				}
+			}
+		}
+
+		public ICompletionData SelectedCompletionData
+		{
+			get
+			{
+				if (_selectedItem < 0)
+					return null;
+				return _completionData[_selectedItem];
+			}
+		}
+
+		public int ItemHeight => Math.Max(ImageList.ImageSize.Height, (int) (Font.Height * 1.25));
+
+		public int MaxVisibleItem => Height / ItemHeight;
+
 		public void Close()
 		{
-			if (completionData != null) {
-				Array.Clear(completionData, 0, completionData.Length);
-			}
+			if (_completionData != null)
+				Array.Clear(_completionData, 0, _completionData.Length);
 			base.Dispose();
 		}
-		
+
 		public void SelectIndex(int index)
 		{
-			int oldSelectedItem = selectedItem;
-			int oldFirstItem    = firstItem;
-			
+			var oldSelectedItem = _selectedItem;
+			var oldFirstItem = _firstItem;
+
 			index = Math.Max(0, index);
-			selectedItem = Math.Max(0, Math.Min(completionData.Length - 1, index));
-			if (selectedItem < firstItem) {
-				FirstItem = selectedItem;
-			}
-			if (firstItem + MaxVisibleItem <= selectedItem) {
-				FirstItem = selectedItem - MaxVisibleItem + 1;
-			}
-			if (oldSelectedItem != selectedItem) {
-				if (firstItem != oldFirstItem) {
+			_selectedItem = Math.Max(0, Math.Min(_completionData.Length - 1, index));
+			if (_selectedItem < _firstItem)
+				FirstItem = _selectedItem;
+			if (_firstItem + MaxVisibleItem <= _selectedItem)
+				FirstItem = _selectedItem - MaxVisibleItem + 1;
+			if (oldSelectedItem != _selectedItem)
+			{
+				if (_firstItem != oldFirstItem)
+				{
 					Invalidate();
-				} else {
-					int min = Math.Min(selectedItem, oldSelectedItem) - firstItem;
-					int max = Math.Max(selectedItem, oldSelectedItem) - firstItem;
+				}
+				else
+				{
+					var min = Math.Min(_selectedItem, oldSelectedItem) - _firstItem;
+					var max = Math.Max(_selectedItem, oldSelectedItem) - _firstItem;
 					Invalidate(new Rectangle(0, 1 + min * ItemHeight, Width, (max - min + 1) * ItemHeight));
 				}
 				OnSelectedItemChanged(EventArgs.Empty);
 			}
 		}
-		
+
 		public void CenterViewOn(int index)
 		{
-			int oldFirstItem = this.FirstItem;
-			int firstItem = index - MaxVisibleItem / 2;
+			var oldFirstItem = FirstItem;
+			var firstItem = index - MaxVisibleItem / 2;
 			if (firstItem < 0)
-				this.FirstItem = 0;
-			else if (firstItem >= completionData.Length - MaxVisibleItem)
-				this.FirstItem = completionData.Length - MaxVisibleItem;
+				FirstItem = 0;
+			else if (firstItem >= _completionData.Length - MaxVisibleItem)
+				FirstItem = _completionData.Length - MaxVisibleItem;
 			else
-				this.FirstItem = firstItem;
-			if (this.FirstItem != oldFirstItem) {
+				FirstItem = firstItem;
+			if (FirstItem != oldFirstItem)
 				Invalidate();
-			}
 		}
-		
+
 		public void ClearSelection()
 		{
-			if (selectedItem < 0)
+			if (_selectedItem < 0)
 				return;
-			int itemNum = selectedItem - firstItem;
-			selectedItem = -1;
+			var itemNum = _selectedItem - _firstItem;
+			_selectedItem = -1;
 			Invalidate(new Rectangle(0, itemNum * ItemHeight, Width, (itemNum + 1) * ItemHeight + 1));
 			Update();
 			OnSelectedItemChanged(EventArgs.Empty);
 		}
-		
+
 		public void PageDown()
 		{
-			SelectIndex(selectedItem + MaxVisibleItem);
+			SelectIndex(_selectedItem + MaxVisibleItem);
 		}
-		
+
 		public void PageUp()
 		{
-			SelectIndex(selectedItem - MaxVisibleItem);
+			SelectIndex(_selectedItem - MaxVisibleItem);
 		}
-		
+
 		public void SelectNextItem()
 		{
-			SelectIndex(selectedItem + 1);
+			SelectIndex(_selectedItem + 1);
 		}
-		
+
 		public void SelectPrevItem()
 		{
-			SelectIndex(selectedItem - 1);
+			SelectIndex(_selectedItem - 1);
 		}
-		
+
 		public void SelectItemWithStart(string startText)
 		{
 			if (startText == null || startText.Length == 0) return;
-			string originalStartText = startText;
+			var originalStartText = startText;
 			startText = startText.ToLower();
-			int bestIndex = -1;
-			int bestQuality = -1;
+			var bestIndex = -1;
+			var bestQuality = -1;
 			// Qualities: 0 = match start
 			//            1 = match start case sensitive
 			//            2 = full match
 			//            3 = full match case sensitive
 			double bestPriority = 0;
-			for (int i = 0; i < completionData.Length; ++i) {
-				string itemText = completionData[i].Text;
-				string lowerText = itemText.ToLower();
-				if (lowerText.StartsWith(startText)) {
-					double priority = completionData[i].Priority;
+			for (var i = 0; i < _completionData.Length; ++i)
+			{
+				var itemText = _completionData[i].Text;
+				var lowerText = itemText.ToLower();
+				if (lowerText.StartsWith(startText))
+				{
+					var priority = _completionData[i].Priority;
 					int quality;
-					if (lowerText == startText) {
+					if (lowerText == startText)
 						if (itemText == originalStartText)
 							quality = 3;
 						else
 							quality = 2;
-					} else if (itemText.StartsWith(originalStartText)) {
+					else if (itemText.StartsWith(originalStartText))
 						quality = 1;
-					} else {
+					else
 						quality = 0;
-					}
 					bool useThisItem;
-					if (bestQuality < quality) {
+					if (bestQuality < quality)
+					{
 						useThisItem = true;
-					} else {
-						if (bestIndex == selectedItem) {
-							useThisItem = false;
-						} else if (i == selectedItem) {
-							useThisItem = bestQuality == quality;
-						} else {
-							useThisItem = bestQuality == quality && bestPriority < priority;
-						}
 					}
-					if (useThisItem) {
+					else
+					{
+						if (bestIndex == _selectedItem)
+							useThisItem = false;
+						else if (i == _selectedItem)
+							useThisItem = bestQuality == quality;
+						else
+							useThisItem = bestQuality == quality && bestPriority < priority;
+					}
+					if (useThisItem)
+					{
 						bestIndex = i;
 						bestPriority = priority;
 						bestQuality = quality;
 					}
 				}
 			}
-			if (bestIndex < 0) {
+			if (bestIndex < 0)
+			{
 				ClearSelection();
-			} else {
-				if (bestIndex < firstItem || firstItem + MaxVisibleItem <= bestIndex) {
+			}
+			else
+			{
+				if (bestIndex < _firstItem || _firstItem + MaxVisibleItem <= bestIndex)
+				{
 					SelectIndex(bestIndex);
 					CenterViewOn(bestIndex);
-				} else {
+				}
+				else
+				{
 					SelectIndex(bestIndex);
 				}
 			}
 		}
-		
+
 		protected override void OnPaint(PaintEventArgs pe)
 		{
-			float yPos       = 1;
+			float yPos = 1;
 			float itemHeight = ItemHeight;
 			// Maintain aspect ratio
-			int imageWidth = (int)(itemHeight * imageList.ImageSize.Width / imageList.ImageSize.Height);
-			
-			int curItem = firstItem;
-			Graphics g  = pe.Graphics;
-			while (curItem < completionData.Length && yPos < Height) {
-				RectangleF drawingBackground = new RectangleF(1, yPos, Width - 2, itemHeight);
-				if (drawingBackground.IntersectsWith(pe.ClipRectangle)) {
+			var imageWidth = (int) (itemHeight * ImageList.ImageSize.Width / ImageList.ImageSize.Height);
+
+			var curItem = _firstItem;
+			var g = pe.Graphics;
+			while (curItem < _completionData.Length && yPos < Height)
+			{
+				var drawingBackground = new RectangleF(1, yPos, Width - 2, itemHeight);
+				if (drawingBackground.IntersectsWith(pe.ClipRectangle))
+				{
 					// draw Background
-					if (curItem == selectedItem) {
+					if (curItem == _selectedItem)
 						g.FillRectangle(SystemBrushes.Highlight, drawingBackground);
-					} else {
+					else
 						g.FillRectangle(SystemBrushes.Window, drawingBackground);
-					}
-					
+
 					// draw Icon
-					int   xPos   = 0;
-					if (imageList != null && completionData[curItem].ImageIndex < imageList.Images.Count) {
-						g.DrawImage(imageList.Images[completionData[curItem].ImageIndex], new RectangleF(1, yPos, imageWidth, itemHeight));
+					var xPos = 0;
+					if (ImageList != null && _completionData[curItem].ImageIndex < ImageList.Images.Count)
+					{
+						g.DrawImage(ImageList.Images[_completionData[curItem].ImageIndex], new RectangleF(1, yPos, imageWidth, itemHeight));
 						xPos = imageWidth;
 					}
-					
+
 					// draw text
-					if (curItem == selectedItem) {
-						g.DrawString(completionData[curItem].Text, Font, SystemBrushes.HighlightText, xPos, yPos);
-					} else {
-						g.DrawString(completionData[curItem].Text, Font, SystemBrushes.WindowText, xPos, yPos);
-					}
+					if (curItem == _selectedItem)
+						g.DrawString(_completionData[curItem].Text, Font, SystemBrushes.HighlightText, xPos, yPos);
+					else
+						g.DrawString(_completionData[curItem].Text, Font, SystemBrushes.WindowText, xPos, yPos);
 				}
-				
+
 				yPos += itemHeight;
 				++curItem;
 			}
 			g.DrawRectangle(SystemPens.Control, new Rectangle(0, 0, Width - 1, Height - 1));
 		}
-		
-		protected override void OnMouseDown(System.Windows.Forms.MouseEventArgs e)
+
+		protected override void OnMouseDown(MouseEventArgs e)
 		{
-			float yPos       = 1;
-			int curItem = firstItem;
+			float yPos = 1;
+			var curItem = _firstItem;
 			float itemHeight = ItemHeight;
-			
-			while (curItem < completionData.Length && yPos < Height) {
-				RectangleF drawingBackground = new RectangleF(1, yPos, Width - 2, itemHeight);
-				if (drawingBackground.Contains(e.X, e.Y)) {
+
+			while (curItem < _completionData.Length && yPos < Height)
+			{
+				var drawingBackground = new RectangleF(1, yPos, Width - 2, itemHeight);
+				if (drawingBackground.Contains(e.X, e.Y))
+				{
 					SelectIndex(curItem);
 					break;
 				}
@@ -268,25 +267,23 @@ namespace ICSharpCode.TextEditor.Gui.CompletionWindow
 				++curItem;
 			}
 		}
-		
+
 		protected override void OnPaintBackground(PaintEventArgs pe)
 		{
 		}
-		
+
 		protected virtual void OnSelectedItemChanged(EventArgs e)
 		{
-			if (SelectedItemChanged != null) {
+			if (SelectedItemChanged != null)
 				SelectedItemChanged(this, e);
-			}
 		}
-		
+
 		protected virtual void OnFirstItemChanged(EventArgs e)
 		{
-			if (FirstItemChanged != null) {
+			if (FirstItemChanged != null)
 				FirstItemChanged(this, e);
-			}
 		}
-		
+
 		public event EventHandler SelectedItemChanged;
 		public event EventHandler FirstItemChanged;
 	}

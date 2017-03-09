@@ -11,25 +11,25 @@ using System.Windows.Forms;
 namespace ICSharpCode.TextEditor.Util
 {
 	/// <summary>
-	/// Accumulates mouse wheel deltas and reports the actual number of lines to scroll.
+	///     Accumulates mouse wheel deltas and reports the actual number of lines to scroll.
 	/// </summary>
-	class MouseWheelHandler
+	internal class MouseWheelHandler
 	{
 		// CODE DUPLICATION: See ICSharpCode.SharpDevelop.Widgets.MouseWheelHandler
-		
-		const int WHEEL_DELTA = 120;
-		
-		int mouseWheelDelta;
-		
+
+		private const int WheelDelta = 120;
+
+		private int _mouseWheelDelta;
+
 		public int GetScrollAmount(MouseEventArgs e)
 		{
 			// accumulate the delta to support high-resolution mice
-			mouseWheelDelta += e.Delta;
-			
-			int linesPerClick = Math.Max(SystemInformation.MouseWheelScrollLines, 1);
-			
-			int scrollDistance = mouseWheelDelta * linesPerClick / WHEEL_DELTA;
-			mouseWheelDelta %= Math.Max(1, WHEEL_DELTA / linesPerClick);
+			_mouseWheelDelta += e.Delta;
+
+			var linesPerClick = Math.Max(SystemInformation.MouseWheelScrollLines, 1);
+
+			var scrollDistance = _mouseWheelDelta * linesPerClick / WheelDelta;
+			_mouseWheelDelta %= Math.Max(1, WheelDelta / linesPerClick);
 			return scrollDistance;
 		}
 	}

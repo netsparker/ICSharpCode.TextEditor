@@ -6,80 +6,83 @@
 // </file>
 
 using System;
-using System.Diagnostics;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace ICSharpCode.TextEditor.Util
 {
 	internal struct RedBlackTreeIterator<T> : IEnumerator<T>
 	{
-		internal RedBlackTreeNode<T> node;
-		
+		internal RedBlackTreeNode<T> Node;
+
 		internal RedBlackTreeIterator(RedBlackTreeNode<T> node)
 		{
-			this.node = node;
+			Node = node;
 		}
-		
-		public bool IsValid {
-			get { return node != null; }
-		}
-		
-		public T Current {
-			get {
-				if (node != null)
-					return node.val;
-				else
-					throw new InvalidOperationException();
+
+		public bool IsValid => Node != null;
+
+		public T Current
+		{
+			get
+			{
+				if (Node != null)
+					return Node.Val;
+				throw new InvalidOperationException();
 			}
 		}
-		
-		object System.Collections.IEnumerator.Current {
-			get {
-				return this.Current;
-			}
-		}
-		
+
+		object IEnumerator.Current => Current;
+
 		void IDisposable.Dispose()
 		{
 		}
-		
-		void System.Collections.IEnumerator.Reset()
+
+		void IEnumerator.Reset()
 		{
 			throw new NotSupportedException();
 		}
-		
+
 		public bool MoveNext()
 		{
-			if (node == null)
+			if (Node == null)
 				return false;
-			if (node.right != null) {
-				node = node.right.LeftMost;
-			} else {
-				RedBlackTreeNode<T> oldNode;
-				do {
-					oldNode = node;
-					node = node.parent;
-					// we are on the way up from the right part, don't output node again
-				} while (node != null && node.right == oldNode);
+			if (Node.Right != null)
+			{
+				Node = Node.Right.LeftMost;
 			}
-			return node != null;
+			else
+			{
+				RedBlackTreeNode<T> oldNode;
+				do
+				{
+					oldNode = Node;
+					Node = Node.Parent;
+					// we are on the way up from the right part, don't output node again
+				} while (Node != null && Node.Right == oldNode);
+			}
+			return Node != null;
 		}
-		
+
 		public bool MoveBack()
 		{
-			if (node == null)
+			if (Node == null)
 				return false;
-			if (node.left != null) {
-				node = node.left.RightMost;
-			} else {
-				RedBlackTreeNode<T> oldNode;
-				do {
-					oldNode = node;
-					node = node.parent;
-					// we are on the way up from the left part, don't output node again
-				} while (node != null && node.left == oldNode);
+			if (Node.Left != null)
+			{
+				Node = Node.Left.RightMost;
 			}
-			return node != null;
+			else
+			{
+				RedBlackTreeNode<T> oldNode;
+				do
+				{
+					oldNode = Node;
+					Node = Node.Parent;
+					// we are on the way up from the left part, don't output node again
+				} while (Node != null && Node.Left == oldNode);
+			}
+			return Node != null;
 		}
 	}
 }

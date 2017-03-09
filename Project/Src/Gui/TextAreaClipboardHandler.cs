@@ -6,263 +6,270 @@
 // </file>
 
 using System;
-using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
-
-using ICSharpCode.TextEditor.Document;
+using ICSharpCode.TextEditor.Actions;
 using ICSharpCode.TextEditor.Util;
 
 namespace ICSharpCode.TextEditor
 {
 	public class TextAreaClipboardHandler
 	{
-		TextArea textArea;
-		
-		public bool EnableCut {
-			get {
-				return textArea.EnableCutOrPaste; //textArea.SelectionManager.HasSomethingSelected;
-			}
-		}
-		
-		public bool EnableCopy {
-			get {
-				return true; //textArea.SelectionManager.HasSomethingSelected;
-			}
-		}
-		
 		public delegate bool ClipboardContainsTextDelegate();
-		
+
+		private const string LineSelectedType = "MSDEVLineSelect";
+
 		/// <summary>
-		/// Is called when CachedClipboardContainsText should be updated.
-		/// If this property is null (the default value), the text editor uses
-		/// System.Windows.Forms.Clipboard.ContainsText.
+		///     Is called when CachedClipboardContainsText should be updated.
+		///     If this property is null (the default value), the text editor uses
+		///     System.Windows.Forms.Clipboard.ContainsText.
 		/// </summary>
 		/// <remarks>
-		/// This property is useful if you want to prevent the default Clipboard.ContainsText
-		/// behaviour that waits for the clipboard to be available - the clipboard might
-		/// never become available if it is owned by a process that is paused by the debugger.
+		///     This property is useful if you want to prevent the default Clipboard.ContainsText
+		///     behaviour that waits for the clipboard to be available - the clipboard might
+		///     never become available if it is owned by a process that is paused by the debugger.
 		/// </remarks>
 		public static ClipboardContainsTextDelegate GetClipboardContainsText;
-		
-		public bool EnablePaste {
-			get {
-				if (!textArea.EnableCutOrPaste)
+
+		// Code duplication: TextAreaClipboardHandler.cs also has SafeSetClipboard
+		[ThreadStatic] private static int _safeSetClipboardDataVersion;
+		private readonly TextArea _textArea;
+
+		public TextAreaClipboardHandler(TextArea textArea)
+		{
+			_textArea = textArea;
+			textArea.SelectionManager.SelectionChanged += DocumentSelectionChanged;
+		}
+
+		public bool EnableCut => _textArea.EnableCutOrPaste;
+
+		public bool EnableCopy => true;
+
+		public bool EnablePaste
+		{
+			get
+			{
+				if (!_textArea.EnableCutOrPaste)
 					return false;
-				ClipboardContainsTextDelegate d = GetClipboardContainsText;
-				if (d != null) {
+				var d = GetClipboardContainsText;
+				if (d != null)
 					return d();
-				} else {
-					try {
-						return Clipboard.ContainsText();
-					} catch (ExternalException) {
-						return false;
-					}
+				try
+				{
+					return Clipboard.ContainsText();
+				}
+				catch (ExternalException)
+				{
+					return false;
 				}
 			}
 		}
-		
-		public bool EnableDelete {
-			get {
-				return textArea.SelectionManager.HasSomethingSelected && !textArea.SelectionManager.SelectionIsReadonly;
-			}
-		}
-		
-		public bool EnableSelectAll {
-			get {
-				return true;
-			}
-		}
-		
-		public TextAreaClipboardHandler(TextArea textArea)
-		{
-			this.textArea = textArea;
-			textArea.SelectionManager.SelectionChanged += new EventHandler(DocumentSelectionChanged);
-		}
-		
-		void DocumentSelectionChanged(object sender, EventArgs e)
+
+		public bool EnableDelete
+			=> _textArea.SelectionManager.HasSomethingSelected && !_textArea.SelectionManager.SelectionIsReadonly;
+
+		public bool EnableSelectAll => true;
+
+		private void DocumentSelectionChanged(object sender, EventArgs e)
 		{
 //			((DefaultWorkbench)WorkbenchSingleton.Workbench).UpdateToolbars();
 		}
 
-		const string LineSelectedType = "MSDEVLineSelect";  // This is the type VS 2003 and 2005 use for flagging a whole line copy
-		
-		bool CopyTextToClipboard(string stringToCopy, bool asLine)
+		// This is the type VS 2003 and 2005 use for flagging a whole line copy
+
+		private bool CopyTextToClipboard(string stringToCopy, bool asLine)
 		{
-			if (stringToCopy.Length > 0) {
-				DataObject dataObject = new DataObject();
+			if (stringToCopy.Length > 0)
+			{
+				var dataObject = new DataObject();
 				dataObject.SetData(DataFormats.UnicodeText, true, stringToCopy);
-				if (asLine) {
-					MemoryStream lineSelected = new MemoryStream(1);
+				if (asLine)
+				{
+					var lineSelected = new MemoryStream(1);
 					lineSelected.WriteByte(1);
 					dataObject.SetData(LineSelectedType, false, lineSelected);
 				}
 				// Default has no highlighting, therefore we don't need RTF output
-				if (textArea.Document.HighlightingStrategy.Name != "Default") {
-					dataObject.SetData(DataFormats.Rtf, RtfWriter.GenerateRtf(textArea));
-				}
+				if (_textArea.Document.HighlightingStrategy.Name != "Default")
+					dataObject.SetData(DataFormats.Rtf, RtfWriter.GenerateRtf(_textArea));
 				OnCopyText(new CopyTextEventArgs(stringToCopy));
-				
+
 				SafeSetClipboard(dataObject);
 				return true;
-			} else {
-				return false;
 			}
+			return false;
 		}
-		
-		// Code duplication: TextAreaClipboardHandler.cs also has SafeSetClipboard
-		[ThreadStatic] static int SafeSetClipboardDataVersion;
-		
-		static void SafeSetClipboard(object dataObject)
+
+		private static void SafeSetClipboard(object dataObject)
 		{
 			// Work around ExternalException bug. (SD2-426)
 			// Best reproducable inside Virtual PC.
-			int version = unchecked(++SafeSetClipboardDataVersion);
-			try {
+			var version = unchecked(++_safeSetClipboardDataVersion);
+			try
+			{
 				Clipboard.SetDataObject(dataObject, true);
-			} catch (ExternalException) {
-				Timer timer = new Timer();
+			}
+			catch (ExternalException)
+			{
+				var timer = new Timer();
 				timer.Interval = 100;
-				timer.Tick += delegate {
+				timer.Tick += delegate
+				{
 					timer.Stop();
 					timer.Dispose();
-					if (SafeSetClipboardDataVersion == version) {
-						try {
+					if (_safeSetClipboardDataVersion == version)
+						try
+						{
 							Clipboard.SetDataObject(dataObject, true, 10, 50);
-						} catch (ExternalException) { }
-					}
+						}
+						catch (ExternalException)
+						{
+						}
 				};
 				timer.Start();
 			}
 		}
 
-		bool CopyTextToClipboard(string stringToCopy)
+		private bool CopyTextToClipboard(string stringToCopy)
 		{
 			return CopyTextToClipboard(stringToCopy, false);
 		}
-		
+
 		public void Cut(object sender, EventArgs e)
 		{
-			if (textArea.SelectionManager.HasSomethingSelected) {
-				if (CopyTextToClipboard(textArea.SelectionManager.SelectedText)) {
-					if (textArea.SelectionManager.SelectionIsReadonly)
+			if (_textArea.SelectionManager.HasSomethingSelected)
+			{
+				if (CopyTextToClipboard(_textArea.SelectionManager.SelectedText))
+				{
+					if (_textArea.SelectionManager.SelectionIsReadonly)
 						return;
 					// Remove text
-					textArea.BeginUpdate();
-					textArea.Caret.Position = textArea.SelectionManager.SelectionCollection[0].StartPosition;
-					textArea.SelectionManager.RemoveSelectedText();
-					textArea.EndUpdate();
+					_textArea.BeginUpdate();
+					_textArea.Caret.Position = _textArea.SelectionManager.SelectionCollection[0].StartPosition;
+					_textArea.SelectionManager.RemoveSelectedText();
+					_textArea.EndUpdate();
 				}
-			} else if (textArea.Document.TextEditorProperties.CutCopyWholeLine) {
+			}
+			else if (_textArea.Document.TextEditorProperties.CutCopyWholeLine)
+			{
 				// No text was selected, select and cut the entire line
-				int curLineNr = textArea.Document.GetLineNumberForOffset(textArea.Caret.Offset);
-				LineSegment lineWhereCaretIs = textArea.Document.GetLineSegment(curLineNr);
-				string caretLineText = textArea.Document.GetText(lineWhereCaretIs.Offset, lineWhereCaretIs.TotalLength);
-				textArea.SelectionManager.SetSelection(textArea.Document.OffsetToPosition(lineWhereCaretIs.Offset), textArea.Document.OffsetToPosition(lineWhereCaretIs.Offset + lineWhereCaretIs.TotalLength));
-				if (CopyTextToClipboard(caretLineText, true)) {
-					if (textArea.SelectionManager.SelectionIsReadonly)
+				var curLineNr = _textArea.Document.GetLineNumberForOffset(_textArea.Caret.Offset);
+				var lineWhereCaretIs = _textArea.Document.GetLineSegment(curLineNr);
+				var caretLineText = _textArea.Document.GetText(lineWhereCaretIs.Offset, lineWhereCaretIs.TotalLength);
+				_textArea.SelectionManager.SetSelection(_textArea.Document.OffsetToPosition(lineWhereCaretIs.Offset),
+					_textArea.Document.OffsetToPosition(lineWhereCaretIs.Offset + lineWhereCaretIs.TotalLength));
+				if (CopyTextToClipboard(caretLineText, true))
+				{
+					if (_textArea.SelectionManager.SelectionIsReadonly)
 						return;
 					// remove line
-					textArea.BeginUpdate();
-					textArea.Caret.Position = textArea.Document.OffsetToPosition(lineWhereCaretIs.Offset);
-					textArea.SelectionManager.RemoveSelectedText();
-					textArea.Document.RequestUpdate(new TextAreaUpdate(TextAreaUpdateType.PositionToEnd, new TextLocation(0, curLineNr)));
-					textArea.EndUpdate();
+					_textArea.BeginUpdate();
+					_textArea.Caret.Position = _textArea.Document.OffsetToPosition(lineWhereCaretIs.Offset);
+					_textArea.SelectionManager.RemoveSelectedText();
+					_textArea.Document.RequestUpdate(new TextAreaUpdate(TextAreaUpdateType.PositionToEnd,
+						new TextLocation(0, curLineNr)));
+					_textArea.EndUpdate();
 				}
 			}
 		}
-		
+
 		public void Copy(object sender, EventArgs e)
 		{
-			if (!CopyTextToClipboard(textArea.SelectionManager.SelectedText) && textArea.Document.TextEditorProperties.CutCopyWholeLine) {
+			if (!CopyTextToClipboard(_textArea.SelectionManager.SelectedText) &&
+			    _textArea.Document.TextEditorProperties.CutCopyWholeLine)
+			{
 				// No text was selected, select the entire line, copy it, and then deselect
-				int curLineNr = textArea.Document.GetLineNumberForOffset(textArea.Caret.Offset);
-				LineSegment lineWhereCaretIs = textArea.Document.GetLineSegment(curLineNr);
-				string caretLineText = textArea.Document.GetText(lineWhereCaretIs.Offset, lineWhereCaretIs.TotalLength);
+				var curLineNr = _textArea.Document.GetLineNumberForOffset(_textArea.Caret.Offset);
+				var lineWhereCaretIs = _textArea.Document.GetLineSegment(curLineNr);
+				var caretLineText = _textArea.Document.GetText(lineWhereCaretIs.Offset, lineWhereCaretIs.TotalLength);
 				CopyTextToClipboard(caretLineText, true);
 			}
 		}
-		
+
 		public void Paste(object sender, EventArgs e)
 		{
-			if (!textArea.EnableCutOrPaste) {
+			if (!_textArea.EnableCutOrPaste)
 				return;
-			}
 			// Clipboard.GetDataObject may throw an exception...
-			for (int i = 0;; i++) {
-				try {
-					IDataObject data = Clipboard.GetDataObject();
+			for (var i = 0;; i++)
+				try
+				{
+					var data = Clipboard.GetDataObject();
 					if (data == null)
 						return;
-					bool fullLine = data.GetDataPresent(LineSelectedType);
-					if (data.GetDataPresent(DataFormats.UnicodeText)) {
-						string text = (string)data.GetData(DataFormats.UnicodeText);
+					var fullLine = data.GetDataPresent(LineSelectedType);
+					if (data.GetDataPresent(DataFormats.UnicodeText))
+					{
+						var text = (string) data.GetData(DataFormats.UnicodeText);
 						// we got NullReferenceExceptions here, apparently the clipboard can contain null strings
-						if (!string.IsNullOrEmpty(text)) {
-							textArea.Document.UndoStack.StartUndoGroup();
-							try {
-								if (textArea.SelectionManager.HasSomethingSelected) {
-									textArea.Caret.Position = textArea.SelectionManager.SelectionCollection[0].StartPosition;
-									textArea.SelectionManager.RemoveSelectedText();
+						if (!string.IsNullOrEmpty(text))
+						{
+							_textArea.Document.UndoStack.StartUndoGroup();
+							try
+							{
+								if (_textArea.SelectionManager.HasSomethingSelected)
+								{
+									_textArea.Caret.Position = _textArea.SelectionManager.SelectionCollection[0].StartPosition;
+									_textArea.SelectionManager.RemoveSelectedText();
 								}
-								if (fullLine) {
-									int col = textArea.Caret.Column;
-									textArea.Caret.Column = 0;
-									if (!textArea.IsReadOnly(textArea.Caret.Offset))
-										textArea.InsertString(text);
-									textArea.Caret.Column = col;
-								} else {
+								if (fullLine)
+								{
+									var col = _textArea.Caret.Column;
+									_textArea.Caret.Column = 0;
+									if (!_textArea.IsReadOnly(_textArea.Caret.Offset))
+										_textArea.InsertString(text);
+									_textArea.Caret.Column = col;
+								}
+								else
+								{
 									// textArea.EnableCutOrPaste already checked readonly for this case
-									textArea.InsertString(text);
+									_textArea.InsertString(text);
 								}
-							} finally {
-								textArea.Document.UndoStack.EndUndoGroup();
+							}
+							finally
+							{
+								_textArea.Document.UndoStack.EndUndoGroup();
 							}
 						}
 					}
 					return;
-				} catch (ExternalException) {
+				}
+				catch (ExternalException)
+				{
 					// GetDataObject does not provide RetryTimes parameter
 					if (i > 5) throw;
 				}
-			}
 		}
-		
+
 		public void Delete(object sender, EventArgs e)
 		{
-			new ICSharpCode.TextEditor.Actions.Delete().Execute(textArea);
+			new Delete().Execute(_textArea);
 		}
-		
+
 		public void SelectAll(object sender, EventArgs e)
 		{
-			new ICSharpCode.TextEditor.Actions.SelectWholeDocument().Execute(textArea);
+			new SelectWholeDocument().Execute(_textArea);
 		}
-		
+
 		protected virtual void OnCopyText(CopyTextEventArgs e)
 		{
-			if (CopyText != null) {
+			if (CopyText != null)
 				CopyText(this, e);
-			}
 		}
-		
+
 		public event CopyTextEventHandler CopyText;
 	}
-	
+
 	public delegate void CopyTextEventHandler(object sender, CopyTextEventArgs e);
+
 	public class CopyTextEventArgs : EventArgs
 	{
-		string text;
-		
-		public string Text {
-			get {
-				return text;
-			}
-		}
-		
 		public CopyTextEventArgs(string text)
 		{
-			this.text = text;
+			Text = text;
 		}
+
+		public string Text { get; }
 	}
 }

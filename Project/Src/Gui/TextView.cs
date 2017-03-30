@@ -594,7 +594,7 @@ namespace ICSharpCode.TextEditor
 		private const int MaximumWordLength = 1000;
 		private const int MaximumCacheSize = 2000;
 
-		private int MeasureStringWidth(Graphics g, string word, Font font)
+		internal int MeasureStringWidth(Graphics g, string word, Font font)
 		{
 			int width;
 

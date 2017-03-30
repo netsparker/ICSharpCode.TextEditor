@@ -22,6 +22,10 @@ namespace ICSharpCode.TextEditor
 	{
 		private const int LineLengthCacheAdditionalSize = 100;
 
+		private readonly MouseWheelHandler _mouseWheelHandler = new MouseWheelHandler();
+
+		private readonly int _scrollMarginHeight = 3;
+
 		private bool _adjustScrollBarsOnNextUpdate;
 
 		private bool _disposed;
@@ -30,10 +34,6 @@ namespace ICSharpCode.TextEditor
 
 		private int[] _lineLengthCache;
 		private TextEditorControl _motherTextEditorControl;
-
-		private readonly MouseWheelHandler _mouseWheelHandler = new MouseWheelHandler();
-
-		private readonly int _scrollMarginHeight = 3;
 		private Point _scrollToPosOnNextUpdate;
 
 		public TextAreaControl(TextEditorControl motherTextEditorControl)
@@ -146,20 +146,160 @@ namespace ICSharpCode.TextEditor
 				h = _hRuler.Bounds.Height;
 			}
 
-			TextArea.Bounds = new Rectangle(0, y,
-				Width - SystemInformation.HorizontalScrollBarArrowWidth,
-				Height - SystemInformation.VerticalScrollBarArrowHeight - h);
-			SetScrollBarBounds();
+			var fontHeight = TextArea.TextView.FontHeight;
+
+			var totalLineHeight = Document.TotalNumberOfLines * fontHeight;
+
+			// If the lines cannot fit the TextArea draw the VScrollBar
+			var drawVScrollBar = totalLineHeight > Height || TextArea.VirtualTop.Y > 0;
+
+			var width = TextArea.TextView.DrawingPosition.Width;
+
+			// Measuring string length is not exactly accurate, add 10 as a error margin
+			var drawHScrollBar = width > 0 && GetMaximumVisibleLineWidth() + 10 > TextArea.TextView.DrawingPosition.Width ||
+			                     TextArea.VirtualTop.X > 0;
+
+			VScrollBar.ValueChanged -= VScrollBarValueChanged;
+			HScrollBar.ValueChanged -= HScrollBarValueChanged;
+			AdjustScrollBars();
+
+			if (drawHScrollBar && drawVScrollBar)
+			{
+				TextArea.Bounds = new Rectangle(0, y,
+					Width - SystemInformation.HorizontalScrollBarArrowWidth,
+					Height - SystemInformation.VerticalScrollBarArrowHeight - h);
+
+				Controls.Remove(VScrollBar);
+				Controls.Remove(HScrollBar);
+
+				Controls.Add(VScrollBar);
+				Controls.Add(HScrollBar);
+
+				VScrollBar.ValueChanged += VScrollBarValueChanged;
+				HScrollBar.ValueChanged += HScrollBarValueChanged;
+
+				SetScrollBarBounds(true, true);
+				TextArea.Invalidate();
+			}
+			else if (drawVScrollBar)
+			{
+				TextArea.Bounds = new Rectangle(0, y,
+					Width - SystemInformation.HorizontalScrollBarArrowWidth,
+					Height);
+
+				// If VScrollBar was not visible before scroll to the end
+				if (!Controls.Contains(VScrollBar))
+					VScrollBar.Value = VScrollBar.Maximum;
+				else
+					Controls.Remove(VScrollBar);
+
+				Controls.Add(VScrollBar);
+
+				VScrollBar.ValueChanged += VScrollBarValueChanged;
+
+				SetScrollBarBounds(true, false);
+				TextArea.Invalidate();
+			}
+			else if (drawHScrollBar)
+			{
+				TextArea.Bounds = new Rectangle(0, y,
+					Width,
+					Height - SystemInformation.VerticalScrollBarArrowHeight - h);
+
+				Controls.Remove(HScrollBar);
+
+				Controls.Add(HScrollBar);
+
+				HScrollBar.ValueChanged += HScrollBarValueChanged;
+
+				SetScrollBarBounds(false, true);
+				TextArea.Invalidate();
+			}
+			else
+			{
+				Controls.Remove(VScrollBar);
+				Controls.Remove(HScrollBar);
+
+				TextArea.Bounds = new Rectangle(0, y,
+					Width,
+					Height);
+			}
 		}
 
-		public void SetScrollBarBounds()
+		public void SetScrollBarBounds(bool setVertical, bool setHorizontal)
 		{
-			VScrollBar.Bounds = new Rectangle(TextArea.Bounds.Right, 0, SystemInformation.HorizontalScrollBarArrowWidth,
-				Height - SystemInformation.VerticalScrollBarArrowHeight);
-			HScrollBar.Bounds = new Rectangle(0,
-				TextArea.Bounds.Bottom,
-				Width - SystemInformation.HorizontalScrollBarArrowWidth,
-				SystemInformation.VerticalScrollBarArrowHeight);
+			if (setVertical)
+			{
+				VScrollBar.Bounds = new Rectangle(TextArea.Bounds.Right, 0, SystemInformation.HorizontalScrollBarArrowWidth,
+					setHorizontal ? Height - SystemInformation.VerticalScrollBarArrowHeight : Height);
+				VScrollBar.Invalidate();
+			}
+
+			if (setHorizontal)
+			{
+				HScrollBar.Bounds = new Rectangle(0,
+					TextArea.Bounds.Bottom,
+					Width - SystemInformation.HorizontalScrollBarArrowWidth,
+					SystemInformation.VerticalScrollBarArrowHeight);
+				HScrollBar.Invalidate();
+			}
+		}
+
+		private int GetMaximumVisibleLineWidth()
+		{
+			var max = 0;
+			var graphics = TextArea.CreateGraphics();
+
+			var firstLine = TextArea.TextView.FirstVisibleLine;
+			var lastLine = Document.GetFirstLogicalLine(TextArea.TextView.FirstPhysicalLine + TextArea.TextView.VisibleLineCount);
+			if (lastLine >= Document.TotalNumberOfLines)
+				lastLine = Document.TotalNumberOfLines - 1;
+			var tabIndent = Document.TextEditorProperties.TabIndent;
+			var minTabWidth = 4;
+			var wideSpaceWidth = TextArea.TextView.WideSpaceWidth;
+			var fontContainer = TextEditorProperties.FontContainer;
+
+			for (var lineNumber = firstLine; lineNumber <= lastLine; lineNumber++)
+			{
+				var lineSegment = Document.GetLineSegment(lineNumber);
+
+				if (Document.FoldingManager.IsLineVisible(lineNumber))
+				{
+					var lineWidth = 0;
+					var words = lineSegment.Words;
+					var wordCount = words.Count;
+					var offset = 0;
+
+					for (var i = 0; i < wordCount; i++)
+					{
+						var word = words[i];
+
+						switch (word.Type)
+						{
+							case TextWordType.Space:
+								lineWidth += TextArea.TextView.SpaceWidth;
+								break;
+							case TextWordType.Tab:
+								// go to next tab position
+								lineWidth = (lineWidth + minTabWidth) / tabIndent / wideSpaceWidth * tabIndent * wideSpaceWidth;
+								lineWidth += tabIndent * wideSpaceWidth;
+								break;
+							case TextWordType.Word:
+								var text = Document.GetText(offset + lineSegment.Offset, word.Length);
+
+								lineWidth += TextArea.TextView.MeasureStringWidth(graphics, text,
+									word.GetFont(fontContainer) ?? fontContainer.RegularFont);
+								break;
+						}
+
+						offset += word.Length;
+					}
+
+					max = Math.Max(max, lineWidth);
+				}
+			}
+
+			return max;
 		}
 
 		private void AdjustScrollBarsOnDocumentChange(object sender, DocumentEventArgs e)
@@ -203,15 +343,22 @@ namespace ICSharpCode.TextEditor
 
 		public void AdjustScrollBars()
 		{
+			if (TextArea == null)
+				return;
+
 			_adjustScrollBarsOnNextUpdate = false;
 			VScrollBar.Minimum = 0;
+
+			var fontHeight = TextArea.TextView.FontHeight;
+
+			var totalLineHeight = TextArea.TextView.VisibleLineCount * fontHeight;
+
 			// number of visible lines in document (folding!)
-			VScrollBar.Maximum = TextArea.MaxVScrollValue;
+			VScrollBar.Maximum = totalLineHeight;
 			var max = 0;
 
 			var firstLine = TextArea.TextView.FirstVisibleLine;
-			var lastLine =
-				Document.GetFirstLogicalLine(TextArea.TextView.FirstPhysicalLine + TextArea.TextView.VisibleLineCount);
+			var lastLine = Document.GetFirstLogicalLine(TextArea.TextView.FirstPhysicalLine + TextArea.TextView.VisibleLineCount);
 			if (lastLine >= Document.TotalNumberOfLines)
 				lastLine = Document.TotalNumberOfLines - 1;
 
@@ -233,8 +380,9 @@ namespace ICSharpCode.TextEditor
 						max = Math.Max(max, visualLength);
 					}
 			}
+
 			HScrollBar.Minimum = 0;
-			HScrollBar.Maximum = Math.Max(max + 20, TextArea.TextView.VisibleColumnCount - 1);
+			HScrollBar.Maximum = Math.Max(max + 10, TextArea.TextView.VisibleColumnCount - 1);
 
 			VScrollBar.LargeChange = Math.Max(0, TextArea.TextView.DrawingPosition.Height);
 			VScrollBar.SmallChange = Math.Max(0, TextArea.TextView.FontHeight);

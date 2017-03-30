@@ -32,7 +32,6 @@ namespace ICSharpCode.TextEditor
 		OverwriteMode
 	}
 
-
 	public class Caret : IDisposable
 	{
 		private static bool _caretCreated;

@@ -248,54 +248,56 @@ namespace ICSharpCode.TextEditor
 		private int GetMaximumVisibleLineWidth()
 		{
 			var max = 0;
-			var graphics = TextArea.CreateGraphics();
-
-			var firstLine = TextArea.TextView.FirstVisibleLine;
-			var lastLine = Document.GetFirstLogicalLine(TextArea.TextView.FirstPhysicalLine + TextArea.TextView.VisibleLineCount);
-			if (lastLine >= Document.TotalNumberOfLines)
-				lastLine = Document.TotalNumberOfLines - 1;
-			var tabIndent = Document.TextEditorProperties.TabIndent;
-			var minTabWidth = 4;
-			var wideSpaceWidth = TextArea.TextView.WideSpaceWidth;
-			var fontContainer = TextEditorProperties.FontContainer;
-
-			for (var lineNumber = firstLine; lineNumber <= lastLine; lineNumber++)
+			using (var graphics = TextArea.CreateGraphics())
 			{
-				var lineSegment = Document.GetLineSegment(lineNumber);
+				var firstLine = TextArea.TextView.FirstVisibleLine;
+				var lastLine =
+					Document.GetFirstLogicalLine(TextArea.TextView.FirstPhysicalLine + TextArea.TextView.VisibleLineCount);
+				if (lastLine >= Document.TotalNumberOfLines)
+					lastLine = Document.TotalNumberOfLines - 1;
+				var tabIndent = Document.TextEditorProperties.TabIndent;
+				var minTabWidth = 4;
+				var wideSpaceWidth = TextArea.TextView.WideSpaceWidth;
+				var fontContainer = TextEditorProperties.FontContainer;
 
-				if (Document.FoldingManager.IsLineVisible(lineNumber))
+				for (var lineNumber = firstLine; lineNumber <= lastLine; lineNumber++)
 				{
-					var lineWidth = 0;
-					var words = lineSegment.Words;
-					var wordCount = words.Count;
-					var offset = 0;
+					var lineSegment = Document.GetLineSegment(lineNumber);
 
-					for (var i = 0; i < wordCount; i++)
+					if (Document.FoldingManager.IsLineVisible(lineNumber))
 					{
-						var word = words[i];
+						var lineWidth = 0;
+						var words = lineSegment.Words;
+						var wordCount = words.Count;
+						var offset = 0;
 
-						switch (word.Type)
+						for (var i = 0; i < wordCount; i++)
 						{
-							case TextWordType.Space:
-								lineWidth += TextArea.TextView.SpaceWidth;
-								break;
-							case TextWordType.Tab:
-								// go to next tab position
-								lineWidth = (lineWidth + minTabWidth) / tabIndent / wideSpaceWidth * tabIndent * wideSpaceWidth;
-								lineWidth += tabIndent * wideSpaceWidth;
-								break;
-							case TextWordType.Word:
-								var text = Document.GetText(offset + lineSegment.Offset, word.Length);
+							var word = words[i];
 
-								lineWidth += TextArea.TextView.MeasureStringWidth(graphics, text,
-									word.GetFont(fontContainer) ?? fontContainer.RegularFont);
-								break;
+							switch (word.Type)
+							{
+								case TextWordType.Space:
+									lineWidth += TextArea.TextView.SpaceWidth;
+									break;
+								case TextWordType.Tab:
+									// go to next tab position
+									lineWidth = (lineWidth + minTabWidth) / tabIndent / wideSpaceWidth * tabIndent * wideSpaceWidth;
+									lineWidth += tabIndent * wideSpaceWidth;
+									break;
+								case TextWordType.Word:
+									var text = Document.GetText(offset + lineSegment.Offset, word.Length);
+
+									lineWidth += TextArea.TextView.MeasureStringWidth(graphics, text,
+										word.GetFont(fontContainer) ?? fontContainer.RegularFont);
+									break;
+							}
+
+							offset += word.Length;
 						}
 
-						offset += word.Length;
+						max = Math.Max(max, lineWidth);
 					}
-
-					max = Math.Max(max, lineWidth);
 				}
 			}
 

@@ -179,7 +179,6 @@ namespace ICSharpCode.TextEditor
 				HScrollBar.ValueChanged += HScrollBarValueChanged;
 
 				SetScrollBarBounds(true, true);
-				TextArea.Invalidate();
 			}
 			else if (drawVScrollBar)
 			{
@@ -198,7 +197,6 @@ namespace ICSharpCode.TextEditor
 				VScrollBar.ValueChanged += VScrollBarValueChanged;
 
 				SetScrollBarBounds(true, false);
-				TextArea.Invalidate();
 			}
 			else if (drawHScrollBar)
 			{
@@ -213,7 +211,6 @@ namespace ICSharpCode.TextEditor
 				HScrollBar.ValueChanged += HScrollBarValueChanged;
 
 				SetScrollBarBounds(false, true);
-				TextArea.Invalidate();
 			}
 			else
 			{
@@ -224,6 +221,8 @@ namespace ICSharpCode.TextEditor
 					Width,
 					Height);
 			}
+
+			TextArea.Invalidate();
 		}
 
 		public void SetScrollBarBounds(bool setVertical, bool setHorizontal)
@@ -427,14 +426,13 @@ namespace ICSharpCode.TextEditor
 		private void VScrollBarValueChanged(object sender, EventArgs e)
 		{
 			TextArea.VirtualTop = new Point(TextArea.VirtualTop.X, VScrollBar.Value);
-			TextArea.Invalidate();
-			AdjustScrollBars();
+			ResizeTextArea();
 		}
 
 		private void HScrollBarValueChanged(object sender, EventArgs e)
 		{
 			TextArea.VirtualTop = new Point(HScrollBar.Value * TextArea.TextView.WideSpaceWidth, TextArea.VirtualTop.Y);
-			TextArea.Invalidate();
+			ResizeTextArea();
 		}
 
 		public void HandleMouseWheel(MouseEventArgs e)

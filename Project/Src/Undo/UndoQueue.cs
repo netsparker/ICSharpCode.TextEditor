@@ -12,38 +12,42 @@ using System.Diagnostics;
 namespace ICSharpCode.TextEditor.Undo
 {
 	/// <summary>
-	///     This class stacks the last x operations from the undostack and makes
-	///     one undo/redo operation from it.
+	/// This class stacks the last x operations from the undostack and makes
+	/// one undo/redo operation from it.
 	/// </summary>
 	internal sealed class UndoQueue : IUndoableOperation
 	{
-		private readonly List<IUndoableOperation> _undolist = new List<IUndoableOperation>();
-
+		List<IUndoableOperation> undolist = new List<IUndoableOperation>();
+		
 		/// <summary>
 		/// </summary>
 		public UndoQueue(Stack<IUndoableOperation> stack, int numops)
 		{
-			if (stack == null)
+			if (stack == null)  {
 				throw new ArgumentNullException("stack");
-
-			Debug.Assert(numops > 0, "ICSharpCode.TextEditor.Undo.UndoQueue : numops should be > 0");
-			if (numops > stack.Count)
+			}
+			
+			Debug.Assert(numops > 0 , "ICSharpCode.TextEditor.Undo.UndoQueue : numops should be > 0");
+			if (numops > stack.Count) {
 				numops = stack.Count;
-
-			for (var i = 0; i < numops; ++i)
-				_undolist.Add(stack.Pop());
+			}
+			
+			for (int i = 0; i < numops; ++i) {
+				undolist.Add(stack.Pop());
+			}
 		}
-
 		public void Undo()
 		{
-			for (var i = 0; i < _undolist.Count; ++i)
-				_undolist[i].Undo();
+			for (int i = 0; i < undolist.Count; ++i) {
+				undolist[i].Undo();
+			}
 		}
-
+		
 		public void Redo()
 		{
-			for (var i = _undolist.Count - 1; i >= 0; --i)
-				_undolist[i].Redo();
+			for (int i = undolist.Count - 1 ; i >= 0 ; --i) {
+				undolist[i].Redo();
+			}
 		}
 	}
 }

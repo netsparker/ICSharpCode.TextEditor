@@ -14,11 +14,10 @@
 /////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-using System.Reflection;
 using System.Resources;
-using System.Runtime.InteropServices;
+using System.Reflection;
 
-[assembly: ComVisible(false)]
+[assembly: System.Runtime.InteropServices.ComVisible(false)]
 [assembly: AssemblyCompany("ic#code")]
 [assembly: AssemblyProduct("SharpDevelop")]
 [assembly: AssemblyCopyright("2000-2010 AlphaSierraPapa")]
@@ -31,7 +30,7 @@ internal static class RevisionClass
 	public const string Minor = "0";
 	public const string Build = "2";
 	public const string Revision = "6466";
-
+	
 	public const string MainVersion = Major + "." + Minor;
 	public const string FullVersion = Major + "." + Minor + "." + Build + "." + Revision;
 }

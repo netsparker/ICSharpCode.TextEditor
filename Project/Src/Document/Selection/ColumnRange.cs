@@ -5,39 +5,62 @@
 //     <version>$Revision$</version>
 // </file>
 
+using System;
+
 namespace ICSharpCode.TextEditor.Document
 {
-	public class ColumnRange
+	public class ColumnRange 
 	{
-		public static readonly ColumnRange NoColumn = new ColumnRange(-2, -2);
+		public static readonly ColumnRange NoColumn    = new ColumnRange(-2, -2);
 		public static readonly ColumnRange WholeColumn = new ColumnRange(-1, -1);
-
+		
+		int startColumn;
+		int endColumn;
+		
+		public int StartColumn {
+			get {
+				return startColumn;
+			}
+			set {
+				startColumn = value;
+			}
+		}
+		
+		public int EndColumn {
+			get {
+				return endColumn;
+			}
+			set {
+				endColumn = value;
+			}
+		}
+		
 		public ColumnRange(int startColumn, int endColumn)
 		{
-			StartColumn = startColumn;
-			EndColumn = endColumn;
+			this.startColumn = startColumn;
+			this.endColumn = endColumn;
+			
 		}
-
-		public int StartColumn { get; set; }
-
-		public int EndColumn { get; set; }
-
+		
 		public override int GetHashCode()
 		{
-			return StartColumn + (EndColumn << 16);
+			return startColumn + (endColumn << 16);
 		}
-
+		
 		public override bool Equals(object obj)
 		{
-			if (obj is ColumnRange)
-				return ((ColumnRange) obj).StartColumn == StartColumn &&
-				       ((ColumnRange) obj).EndColumn == EndColumn;
+			if (obj is ColumnRange) {
+				return ((ColumnRange)obj).startColumn == startColumn &&
+				       ((ColumnRange)obj).endColumn == endColumn;
+				
+			}
 			return false;
 		}
-
+		
 		public override string ToString()
 		{
-			return string.Format("[ColumnRange: StartColumn={0}, EndColumn={1}]", StartColumn, EndColumn);
+			return String.Format("[ColumnRange: StartColumn={0}, EndColumn={1}]", startColumn, endColumn);
 		}
+		
 	}
 }

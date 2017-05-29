@@ -5,168 +5,159 @@
 //     <version>$Revision$</version>
 // </file>
 
+using ICSharpCode.TextEditor;
 using ICSharpCode.TextEditor.Actions;
 using ICSharpCode.TextEditor.Document;
 using NUnit.Framework;
+using System;
 
 namespace ICSharpCode.TextEditor.Tests
 {
 	[TestFixture]
 	public class BlockCommentTests
 	{
+		IDocument document = null;
+		string commentStart = "<!--";
+		string commentEnd = "-->";
+		
 		[SetUp]
 		public void Init()
 		{
-			_document = new DocumentFactory().CreateDocument();
-			_document.HighlightingStrategy = HighlightingManager.Manager.FindHighlighter("XML");
+			document = new DocumentFactory().CreateDocument();
+			document.HighlightingStrategy = HighlightingManager.Manager.FindHighlighter("XML");
 		}
-
-		private IDocument _document;
-		private readonly string _commentStart = "<!--";
-		private readonly string _commentEnd = "-->";
-
-		[Test]
-		public void CaretInsideCommentButNoSelectedText()
-		{
-			_document.TextContent = "<!---->";
-			var selectionStartOffset = 4;
-			var selectionEndOffset = 4;
-			var expectedCommentRegion = new BlockCommentRegion(_commentStart, _commentEnd, 0, 4);
-
-			var commentRegion = ToggleBlockComment.FindSelectedCommentRegion(_document, _commentStart, _commentEnd,
-				selectionStartOffset, selectionEndOffset);
-			Assert.AreEqual(expectedCommentRegion, commentRegion);
-		}
-
-		[Test]
-		public void CursorJustOutsideCommentEnd()
-		{
-			_document.TextContent = "<!-- -->";
-			var selectionStartOffset = 8;
-			var selectionEndOffset = 8;
-
-			var commentRegion = ToggleBlockComment.FindSelectedCommentRegion(_document, _commentStart, _commentEnd,
-				selectionStartOffset, selectionEndOffset);
-			Assert.IsNull(commentRegion);
-		}
-
-		[Test]
-		public void CursorJustOutsideCommentStart()
-		{
-			_document.TextContent = "<!-- -->";
-			var selectionStartOffset = 0;
-			var selectionEndOffset = 0;
-
-			var commentRegion = ToggleBlockComment.FindSelectedCommentRegion(_document, _commentStart, _commentEnd,
-				selectionStartOffset, selectionEndOffset);
-			Assert.IsNull(commentRegion);
-		}
-
-		[Test]
-		public void EntireCommentAndExtraTextSelected()
-		{
-			_document.TextContent = "a<!-- -->";
-			var selectionStartOffset = 0;
-			var selectionEndOffset = 9;
-			var expectedCommentRegion = new BlockCommentRegion(_commentStart, _commentEnd, 1, 6);
-
-			var commentRegion = ToggleBlockComment.FindSelectedCommentRegion(_document, _commentStart, _commentEnd,
-				selectionStartOffset, selectionEndOffset);
-			Assert.AreEqual(expectedCommentRegion, commentRegion);
-		}
-
-		[Test]
-		public void EntireCommentSelected()
-		{
-			_document.TextContent = "<!---->";
-			var selectionStartOffset = 0;
-			var selectionEndOffset = 7;
-			var expectedCommentRegion = new BlockCommentRegion(_commentStart, _commentEnd, 0, 4);
-
-			var commentRegion = ToggleBlockComment.FindSelectedCommentRegion(_document, _commentStart, _commentEnd,
-				selectionStartOffset, selectionEndOffset);
-			Assert.AreEqual(expectedCommentRegion, commentRegion);
-		}
-
-		[Test]
-		public void FirstCharacterOfCommentStartSelected()
-		{
-			_document.TextContent = "<!-- -->";
-			var selectionStartOffset = 0;
-			var selectionEndOffset = 1;
-			var expectedCommentRegion = new BlockCommentRegion(_commentStart, _commentEnd, 0, 5);
-
-			var commentRegion = ToggleBlockComment.FindSelectedCommentRegion(_document, _commentStart, _commentEnd,
-				selectionStartOffset, selectionEndOffset);
-			Assert.AreEqual(expectedCommentRegion, commentRegion);
-		}
-
-		[Test]
-		public void LastCharacterOfCommentEndSelected()
-		{
-			_document.TextContent = "<!-- -->";
-			var selectionStartOffset = 7;
-			var selectionEndOffset = 8;
-			var expectedCommentRegion = new BlockCommentRegion(_commentStart, _commentEnd, 0, 5);
-
-			var commentRegion = ToggleBlockComment.FindSelectedCommentRegion(_document, _commentStart, _commentEnd,
-				selectionStartOffset, selectionEndOffset);
-			Assert.AreEqual(expectedCommentRegion, commentRegion);
-		}
-
+		
 		[Test]
 		public void NoTextSelected()
 		{
-			_document.TextContent = string.Empty;
-			var selectionStartOffset = 0;
-			var selectionEndOffset = 0;
-
-			var commentRegion = ToggleBlockComment.FindSelectedCommentRegion(_document, _commentStart, _commentEnd,
-				selectionStartOffset, selectionEndOffset);
+			document.TextContent = String.Empty;
+			int selectionStartOffset = 0;
+			int selectionEndOffset = 0;
+			
+			BlockCommentRegion commentRegion = ToggleBlockComment.FindSelectedCommentRegion(document, commentStart, commentEnd, selectionStartOffset, selectionEndOffset);
 			Assert.IsNull(commentRegion, "Should not be a comment region for an empty document");
 		}
-
+		
 		[Test]
-		public void OnlyCommentEndSelected()
+		public void EntireCommentSelected()
 		{
-			_document.TextContent = "<!-- -->";
-			var selectionStartOffset = 5;
-			var selectionEndOffset = 8;
-			var expectedCommentRegion = new BlockCommentRegion(_commentStart, _commentEnd, 0, 5);
-
-			var commentRegion = ToggleBlockComment.FindSelectedCommentRegion(_document, _commentStart, _commentEnd,
-				selectionStartOffset, selectionEndOffset);
+			document.TextContent = "<!---->";
+			int selectionStartOffset = 0;
+			int selectionEndOffset = 7;
+			BlockCommentRegion expectedCommentRegion = new BlockCommentRegion(commentStart, commentEnd, 0, 4);
+			
+			BlockCommentRegion commentRegion = ToggleBlockComment.FindSelectedCommentRegion(document, commentStart, commentEnd, selectionStartOffset, selectionEndOffset);
 			Assert.AreEqual(expectedCommentRegion, commentRegion);
 		}
-
+		
+		[Test]
+		public void EntireCommentAndExtraTextSelected()
+		{
+			document.TextContent = "a<!-- -->";
+			int selectionStartOffset = 0;
+			int selectionEndOffset = 9;
+			BlockCommentRegion expectedCommentRegion = new BlockCommentRegion(commentStart, commentEnd, 1, 6);
+			
+			BlockCommentRegion commentRegion = ToggleBlockComment.FindSelectedCommentRegion(document, commentStart, commentEnd, selectionStartOffset, selectionEndOffset);
+			Assert.AreEqual(expectedCommentRegion, commentRegion);
+		}
+		
 		[Test]
 		public void OnlyCommentStartSelected()
 		{
-			_document.TextContent = "<!-- -->";
-			var selectionStartOffset = 0;
-			var selectionEndOffset = 4;
-			var expectedCommentRegion = new BlockCommentRegion(_commentStart, _commentEnd, 0, 5);
-
-			var commentRegion = ToggleBlockComment.FindSelectedCommentRegion(_document, _commentStart, _commentEnd,
-				selectionStartOffset, selectionEndOffset);
+			document.TextContent = "<!-- -->";
+			int selectionStartOffset = 0;
+			int selectionEndOffset = 4;
+			BlockCommentRegion expectedCommentRegion = new BlockCommentRegion(commentStart, commentEnd, 0, 5);
+			
+			BlockCommentRegion commentRegion = ToggleBlockComment.FindSelectedCommentRegion(document, commentStart, commentEnd, selectionStartOffset, selectionEndOffset);
 			Assert.AreEqual(expectedCommentRegion, commentRegion);
 		}
-
+		
+		[Test]
+		public void OnlyCommentEndSelected()
+		{
+			document.TextContent = "<!-- -->";
+			int selectionStartOffset = 5;
+			int selectionEndOffset = 8;
+			BlockCommentRegion expectedCommentRegion = new BlockCommentRegion(commentStart, commentEnd, 0, 5);
+			
+			BlockCommentRegion commentRegion = ToggleBlockComment.FindSelectedCommentRegion(document, commentStart, commentEnd, selectionStartOffset, selectionEndOffset);
+			Assert.AreEqual(expectedCommentRegion, commentRegion);
+		}
+		
+		[Test]
+		public void LastCharacterOfCommentEndSelected()
+		{
+			document.TextContent = "<!-- -->";
+			int selectionStartOffset = 7;
+			int selectionEndOffset = 8;
+			BlockCommentRegion expectedCommentRegion = new BlockCommentRegion(commentStart, commentEnd, 0, 5);
+			
+			BlockCommentRegion commentRegion = ToggleBlockComment.FindSelectedCommentRegion(document, commentStart, commentEnd, selectionStartOffset, selectionEndOffset);
+			Assert.AreEqual(expectedCommentRegion, commentRegion);
+		}		
+		
+		[Test]
+		public void CaretInsideCommentButNoSelectedText()
+		{
+			document.TextContent = "<!---->";
+			int selectionStartOffset = 4;
+			int selectionEndOffset = 4;
+			BlockCommentRegion expectedCommentRegion = new BlockCommentRegion(commentStart, commentEnd, 0, 4);
+			
+			BlockCommentRegion commentRegion = ToggleBlockComment.FindSelectedCommentRegion(document, commentStart, commentEnd, selectionStartOffset, selectionEndOffset);
+			Assert.AreEqual(expectedCommentRegion, commentRegion);
+		}
+		
+		[Test]
+		public void FirstCharacterOfCommentStartSelected()
+		{
+			document.TextContent = "<!-- -->";
+			int selectionStartOffset = 0;
+			int selectionEndOffset = 1;
+			BlockCommentRegion expectedCommentRegion = new BlockCommentRegion(commentStart, commentEnd, 0, 5);
+			
+			BlockCommentRegion commentRegion = ToggleBlockComment.FindSelectedCommentRegion(document, commentStart, commentEnd, selectionStartOffset, selectionEndOffset);
+			Assert.AreEqual(expectedCommentRegion, commentRegion);
+		}	
+		
+		[Test]
+		public void CursorJustOutsideCommentStart()
+		{
+			document.TextContent = "<!-- -->";
+			int selectionStartOffset = 0;
+			int selectionEndOffset = 0;
+			
+			BlockCommentRegion commentRegion = ToggleBlockComment.FindSelectedCommentRegion(document, commentStart, commentEnd, selectionStartOffset, selectionEndOffset);
+			Assert.IsNull(commentRegion);
+		}
+		
+		[Test]
+		public void CursorJustOutsideCommentEnd()
+		{
+			document.TextContent = "<!-- -->";
+			int selectionStartOffset = 8;
+			int selectionEndOffset = 8;
+			
+			BlockCommentRegion commentRegion = ToggleBlockComment.FindSelectedCommentRegion(document, commentStart, commentEnd, selectionStartOffset, selectionEndOffset);
+			Assert.IsNull(commentRegion);
+		}
+		
 		[Test]
 		public void TwoExistingBlockComments()
 		{
-			_document.TextContent = "<a>\r\n" +
-			                        "<!--<b></b>-->\r\n" +
-			                        "\t<c></c>\r\n" +
-			                        "<!--<d></d>-->\r\n" +
-			                        "</a>";
-
-			var selectedText = "<c></c>";
-			var selectionStartOffset = _document.TextContent.IndexOf(selectedText);
-			var selectionEndOffset = selectionStartOffset + selectedText.Length;
-
-			var commentRegion = ToggleBlockComment.FindSelectedCommentRegion(_document, _commentStart, _commentEnd,
-				selectionStartOffset, selectionEndOffset);
+			document.TextContent = "<a>\r\n" +
+									"<!--<b></b>-->\r\n" +
+									"\t<c></c>\r\n" +
+									"<!--<d></d>-->\r\n" +
+									"</a>";
+			
+			string selectedText = "<c></c>";
+			int selectionStartOffset = document.TextContent.IndexOf(selectedText);
+			int selectionEndOffset = selectionStartOffset + selectedText.Length;
+			
+			BlockCommentRegion commentRegion = ToggleBlockComment.FindSelectedCommentRegion(document, commentStart, commentEnd, selectionStartOffset, selectionEndOffset);
 			Assert.IsNull(commentRegion);
 		}
 	}

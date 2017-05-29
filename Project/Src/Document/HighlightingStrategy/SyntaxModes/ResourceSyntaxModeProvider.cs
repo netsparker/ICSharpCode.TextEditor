@@ -5,34 +5,41 @@
 //     <version>$Revision$</version>
 // </file>
 
+using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
 using System.Xml;
 
 namespace ICSharpCode.TextEditor.Document
 {
 	public class ResourceSyntaxModeProvider : ISyntaxModeFileProvider
 	{
-		private readonly List<SyntaxMode> _syntaxModes;
-
+		List<SyntaxMode> syntaxModes = null;
+		
+		public ICollection<SyntaxMode> SyntaxModes {
+			get {
+				return syntaxModes;
+			}
+		}
+		
 		public ResourceSyntaxModeProvider()
 		{
-			var assembly = typeof(SyntaxMode).Assembly;
-			var syntaxModeStream = assembly.GetManifestResourceStream("ICSharpCode.TextEditor.Resources.SyntaxModes.xml");
-			if (syntaxModeStream != null)
-				_syntaxModes = SyntaxMode.GetSyntaxModes(syntaxModeStream);
-			else
-				_syntaxModes = new List<SyntaxMode>();
+			Assembly assembly = typeof(SyntaxMode).Assembly;
+			Stream syntaxModeStream = assembly.GetManifestResourceStream("ICSharpCode.TextEditor.Resources.SyntaxModes.xml");
+			if (syntaxModeStream != null) {
+				syntaxModes = SyntaxMode.GetSyntaxModes(syntaxModeStream);
+			} else {
+				syntaxModes = new List<SyntaxMode>();
+			}
 		}
-
-		public ICollection<SyntaxMode> SyntaxModes => _syntaxModes;
-
+		
 		public XmlTextReader GetSyntaxModeFile(SyntaxMode syntaxMode)
 		{
-			var assembly = typeof(SyntaxMode).Assembly;
-			return
-				new XmlTextReader(assembly.GetManifestResourceStream("ICSharpCode.TextEditor.Resources." + syntaxMode.FileName));
+			Assembly assembly = typeof(SyntaxMode).Assembly;
+			return new XmlTextReader(assembly.GetManifestResourceStream("ICSharpCode.TextEditor.Resources." + syntaxMode.FileName));
 		}
-
+		
 		public void UpdateSyntaxModeList()
 		{
 			// resources don't change during runtime

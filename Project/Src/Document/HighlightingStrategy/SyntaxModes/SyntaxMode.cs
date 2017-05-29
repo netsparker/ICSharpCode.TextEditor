@@ -5,68 +5,92 @@
 //     <version>$Revision$</version>
 // </file>
 
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Windows.Forms;
 using System.Xml;
 
 namespace ICSharpCode.TextEditor.Document
 {
 	public class SyntaxMode
 	{
+		string   fileName;
+		string   name;
+		string[] extensions;
+		
+		public string FileName {
+			get {
+				return fileName;
+			}
+			set {
+				fileName = value;
+			}
+		}
+		
+		public string Name {
+			get {
+				return name;
+			}
+			set {
+				name = value;
+			}
+		}
+		
+		public string[] Extensions {
+			get {
+				return extensions;
+			}
+			set {
+				extensions = value;
+			}
+		}
+		
 		public SyntaxMode(string fileName, string name, string extensions)
 		{
-			FileName = fileName;
-			Name = name;
-			Extensions = extensions.Split(';', '|', ',');
+			this.fileName   = fileName;
+			this.name       = name;
+			this.extensions = extensions.Split(';', '|', ',');
 		}
-
+		
 		public SyntaxMode(string fileName, string name, string[] extensions)
 		{
-			FileName = fileName;
-			Name = name;
-			Extensions = extensions;
+			this.fileName = fileName;
+			this.name = name;
+			this.extensions = extensions;
 		}
-
-		public string FileName { get; set; }
-
-		public string Name { get; set; }
-
-		public string[] Extensions { get; set; }
-
+		
 		public static List<SyntaxMode> GetSyntaxModes(Stream xmlSyntaxModeStream)
 		{
-			var reader = new XmlTextReader(xmlSyntaxModeStream);
-			var syntaxModes = new List<SyntaxMode>();
-			while (reader.Read())
-				switch (reader.NodeType)
-				{
+			XmlTextReader reader = new XmlTextReader(xmlSyntaxModeStream);
+			List<SyntaxMode> syntaxModes = new List<SyntaxMode>();
+			while (reader.Read()) {
+				switch (reader.NodeType) {
 					case XmlNodeType.Element:
-						switch (reader.Name)
-						{
+						switch (reader.Name) {
 							case "SyntaxModes":
-								var version = reader.GetAttribute("version");
-								if (version != "1.0")
-									throw new HighlightingDefinitionInvalidException("Unknown syntax mode file defininition with version " +
-									                                                 version);
+								string version = reader.GetAttribute("version");
+								if (version != "1.0") {
+									throw new HighlightingDefinitionInvalidException("Unknown syntax mode file defininition with version " + version);
+								}
 								break;
 							case "Mode":
-								syntaxModes.Add(new SyntaxMode(reader.GetAttribute("file"),
-									reader.GetAttribute("name"),
-									reader.GetAttribute("extensions")));
+								syntaxModes.Add(new SyntaxMode(reader.GetAttribute("file"), 
+								                               reader.GetAttribute("name"),
+								                               reader.GetAttribute("extensions")));
 								break;
 							default:
 								throw new HighlightingDefinitionInvalidException("Unknown node in syntax mode file :" + reader.Name);
 						}
 						break;
 				}
+			}
 			reader.Close();
 			return syntaxModes;
 		}
-
-		public override string ToString()
+		public override string ToString() 
 		{
-			return string.Format("[SyntaxMode: FileName={0}, Name={1}, Extensions=({2})]", FileName, Name,
-				string.Join(",", Extensions));
+			return String.Format("[SyntaxMode: FileName={0}, Name={1}, Extensions=({2})]", fileName, name, String.Join(",", extensions));
 		}
 	}
 }

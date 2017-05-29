@@ -5,13 +5,15 @@
 //     <version>$Revision$</version>
 // </file>
 
+using System;
+using System.Drawing;
+
 namespace ICSharpCode.TextEditor
 {
 	/// <summary>
-	///     This enum describes all implemented request types
+	/// This enum describes all implemented request types
 	/// </summary>
-	public enum TextAreaUpdateType
-	{
+	public enum TextAreaUpdateType {
 		WholeTextArea,
 		SingleLine,
 		SinglePosition,
@@ -19,54 +21,65 @@ namespace ICSharpCode.TextEditor
 		PositionToEnd,
 		LinesBetween
 	}
-
+	
 	/// <summary>
-	///     This class is used to request an update of the textarea
+	/// This class is used to request an update of the textarea
 	/// </summary>
 	public class TextAreaUpdate
 	{
+		TextLocation position;
+		TextAreaUpdateType type;
+		
+		public TextAreaUpdateType TextAreaUpdateType {
+			get {
+				return type;
+			}
+		}
+		
+		public TextLocation Position {
+			get {
+				return position;
+			}
+		}
+		
 		/// <summary>
-		///     Creates a new instance of <see cref="TextAreaUpdate" />
+		/// Creates a new instance of <see cref="TextAreaUpdate"/>
 		/// </summary>
 		public TextAreaUpdate(TextAreaUpdateType type)
 		{
-			TextAreaUpdateType = type;
+			this.type = type;
 		}
-
+		
 		/// <summary>
-		///     Creates a new instance of <see cref="TextAreaUpdate" />
+		/// Creates a new instance of <see cref="TextAreaUpdate"/>
 		/// </summary>
 		public TextAreaUpdate(TextAreaUpdateType type, TextLocation position)
 		{
-			TextAreaUpdateType = type;
-			Position = position;
+			this.type     = type;
+			this.position = position;
 		}
-
+		
 		/// <summary>
-		///     Creates a new instance of <see cref="TextAreaUpdate" />
+		/// Creates a new instance of <see cref="TextAreaUpdate"/>
 		/// </summary>
 		public TextAreaUpdate(TextAreaUpdateType type, int startLine, int endLine)
 		{
-			TextAreaUpdateType = type;
-			Position = new TextLocation(startLine, endLine);
+			this.type     = type;
+			this.position = new TextLocation(startLine, endLine);
 		}
-
+		
 		/// <summary>
-		///     Creates a new instance of <see cref="TextAreaUpdate" />
+		/// Creates a new instance of <see cref="TextAreaUpdate"/>
 		/// </summary>
 		public TextAreaUpdate(TextAreaUpdateType type, int singleLine)
 		{
-			TextAreaUpdateType = type;
-			Position = new TextLocation(0, singleLine);
+			this.type     = type;
+			this.position = new TextLocation(0, singleLine);
 		}
-
-		public TextAreaUpdateType TextAreaUpdateType { get; }
-
-		public TextLocation Position { get; }
-
+		
 		public override string ToString()
 		{
-			return string.Format("[TextAreaUpdate: Type={0}, Position={1}]", TextAreaUpdateType, Position);
+			return String.Format("[TextAreaUpdate: Type={0}, Position={1}]", type, position);
 		}
 	}
 }

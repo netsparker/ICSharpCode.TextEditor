@@ -12,48 +12,50 @@ using ICSharpCode.TextEditor.Document;
 namespace ICSharpCode.TextEditor.Undo
 {
 	/// <summary>
-	///     This class is for the undo of Document insert operations
+	/// This class is for the undo of Document insert operations
 	/// </summary>
 	public class UndoableDelete : IUndoableOperation
 	{
-		private readonly IDocument _document;
+		IDocument document;
 //		int      oldCaretPos;
-		private readonly int _offset;
-		private readonly string _text;
-
+		int      offset;
+		string   text;
+		
 		/// <summary>
-		///     Creates a new instance of <see cref="UndoableDelete" />
-		/// </summary>
+		/// Creates a new instance of <see cref="UndoableDelete"/>
+		/// </summary>	
 		public UndoableDelete(IDocument document, int offset, string text)
 		{
-			if (document == null)
+			if (document == null) {
 				throw new ArgumentNullException("document");
-			if (offset < 0 || offset > document.TextLength)
+			}
+			if (offset < 0 || offset > document.TextLength) {
 				throw new ArgumentOutOfRangeException("offset");
-
+			}
+			
 			Debug.Assert(text != null, "text can't be null");
 //			oldCaretPos   = document.Caret.Offset;
-			_document = document;
-			_offset = offset;
-			_text = text;
+			this.document = document;
+			this.offset   = offset;
+			this.text     = text;
 		}
-
+		
 		/// <remarks>
-		///     Undo last operation
+		/// Undo last operation
 		/// </remarks>
 		public void Undo()
 		{
 			// we clear all selection direct, because the redraw
 			// is done per refresh at the end of the action
 //			textArea.SelectionManager.SelectionCollection.Clear();
-			_document.UndoStack.AcceptChanges = false;
-			_document.Insert(_offset, _text);
+			document.UndoStack.AcceptChanges = false;
+			document.Insert(offset, text);
 //			document.Caret.Offset = Math.Min(document.TextLength, Math.Max(0, oldCaretPos));
-			_document.UndoStack.AcceptChanges = true;
+			document.UndoStack.AcceptChanges = true;
 		}
-
+		
 		/// <remarks>
-		///     Redo last undone operation
+		/// Redo last undone operation
 		/// </remarks>
 		public void Redo()
 		{
@@ -61,10 +63,10 @@ namespace ICSharpCode.TextEditor.Undo
 			// is done per refresh at the end of the action
 //			textArea.SelectionManager.SelectionCollection.Clear();
 
-			_document.UndoStack.AcceptChanges = false;
-			_document.Remove(_offset, _text.Length);
+			document.UndoStack.AcceptChanges = false;
+			document.Remove(offset, text.Length);
 //			document.Caret.Offset = Math.Min(document.TextLength, Math.Max(0, document.Caret.Offset));
-			_document.UndoStack.AcceptChanges = true;
+			document.UndoStack.AcceptChanges = true;
 		}
 	}
 }

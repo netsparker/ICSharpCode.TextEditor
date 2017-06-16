@@ -53,6 +53,12 @@ namespace ICSharpCode.TextEditor
 			Document.TextContentChanged += DocumentTextContentChanged;
 			Document.DocumentChanged += AdjustScrollBarsOnDocumentChange;
 			Document.UpdateCommited += DocumentUpdateCommitted;
+			Document.FoldingManager.FoldingsChanged += FoldingManagerOnFoldingsChanged;
+		}
+
+		private void FoldingManagerOnFoldingsChanged(object sender, EventArgs eventArgs)
+		{
+			ResizeTextArea();
 		}
 
 		public TextArea TextArea { get; }
@@ -128,10 +134,10 @@ namespace ICSharpCode.TextEditor
 		protected override void OnResize(EventArgs e)
 		{
 			base.OnResize(e);
-			ResizeTextArea();
+			ResizeTextArea(true);
 		}
 
-		public void ResizeTextArea()
+		public void ResizeTextArea(bool forceRedraw = false)
 		{
 			var y = 0;
 			var h = 0;
@@ -148,7 +154,7 @@ namespace ICSharpCode.TextEditor
 
 			var fontHeight = TextArea.TextView.FontHeight;
 
-			var totalLineHeight = Document.TotalNumberOfLines * fontHeight;
+			var totalLineHeight = GetNumberOfVisibleLines() * fontHeight;
 
 			// If the lines cannot fit the TextArea draw the VScrollBar
 			var drawVScrollBar = totalLineHeight > Height || TextArea.VirtualTop.Y > 0;
@@ -159,9 +165,15 @@ namespace ICSharpCode.TextEditor
 			var drawHScrollBar = width > 0 && GetMaximumVisibleLineWidth() + 10 > TextArea.TextView.DrawingPosition.Width ||
 			                     TextArea.VirtualTop.X > 0;
 
+			AdjustScrollBars();
+
+			if (!forceRedraw && !IsRedrawRequired(drawVScrollBar, drawHScrollBar))
+			{
+				return;
+			}
+
 			VScrollBar.ValueChanged -= VScrollBarValueChanged;
 			HScrollBar.ValueChanged -= HScrollBarValueChanged;
-			AdjustScrollBars();
 
 			if (drawHScrollBar && drawVScrollBar)
 			{
@@ -193,6 +205,7 @@ namespace ICSharpCode.TextEditor
 					Controls.Remove(VScrollBar);
 
 				Controls.Add(VScrollBar);
+				Controls.Remove(HScrollBar);
 
 				VScrollBar.ValueChanged += VScrollBarValueChanged;
 
@@ -207,6 +220,7 @@ namespace ICSharpCode.TextEditor
 				Controls.Remove(HScrollBar);
 
 				Controls.Add(HScrollBar);
+				Controls.Remove(VScrollBar);
 
 				HScrollBar.ValueChanged += HScrollBarValueChanged;
 
@@ -223,6 +237,43 @@ namespace ICSharpCode.TextEditor
 			}
 
 			TextArea.Invalidate();
+		}
+
+		private bool IsRedrawRequired(bool drawVScrollBar, bool drawHScrollBar)
+		{
+			var vScrollBarVisible = Controls.Contains(VScrollBar);
+			var hScrollBarVisible = Controls.Contains(HScrollBar);
+
+			if ((drawVScrollBar && !vScrollBarVisible) || (!drawVScrollBar && vScrollBarVisible))
+			{
+				return true;
+			}
+
+			if ((drawHScrollBar && !hScrollBarVisible) || (!drawHScrollBar && hScrollBarVisible))
+			{
+				return true;
+			}
+
+			return false;
+		}
+
+		/// <summary>
+		/// Gets the number of visible lines in the document by excluding lines that are not visible because of folding.
+		/// </summary>
+		/// <returns>The number of visible lines.</returns>
+		private int GetNumberOfVisibleLines()
+		{
+			var lines = 0;
+
+			for (var i = 0; i < Document.TotalNumberOfLines; i++)
+			{
+				if (Document.FoldingManager.IsLineVisible(i))
+				{
+					lines++;
+				}
+			}
+
+			return lines;
 		}
 
 		public void SetScrollBarBounds(bool setVertical, bool setHorizontal)
@@ -330,6 +381,8 @@ namespace ICSharpCode.TextEditor
 					AdjustScrollBarsClearCache();
 					AdjustScrollBars();
 				}
+
+				ResizeTextArea();
 			}
 		}
 
@@ -349,13 +402,8 @@ namespace ICSharpCode.TextEditor
 
 			_adjustScrollBarsOnNextUpdate = false;
 			VScrollBar.Minimum = 0;
-
-			var fontHeight = TextArea.TextView.FontHeight;
-
-			var totalLineHeight = TextArea.TextView.VisibleLineCount * fontHeight;
-
-			// number of visible lines in document (folding!)
-			VScrollBar.Maximum = totalLineHeight;
+			
+			VScrollBar.Maximum = (Document.GetVisibleLine(Document.TotalNumberOfLines - 1) + 1) * TextArea.TextView.FontHeight;
 			var max = 0;
 
 			var firstLine = TextArea.TextView.FirstVisibleLine;
@@ -383,7 +431,7 @@ namespace ICSharpCode.TextEditor
 			}
 
 			HScrollBar.Minimum = 0;
-			HScrollBar.Maximum = Math.Max(max + 10, TextArea.TextView.VisibleColumnCount - 1);
+			HScrollBar.Maximum = Math.Max(max + 3, TextArea.TextView.VisibleColumnCount - 1);
 
 			VScrollBar.LargeChange = Math.Max(0, TextArea.TextView.DrawingPosition.Height);
 			VScrollBar.SmallChange = Math.Max(0, TextArea.TextView.FontHeight);
